@@ -9,3 +9,6 @@
 # Environment variables
 .env
 .env.local
+
+# Vulkan DLL copied during CI build (not committed, generated from VULKAN_SDK)
+vulkan-1.dll

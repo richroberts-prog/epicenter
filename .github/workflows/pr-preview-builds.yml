@@ -94,6 +94,18 @@ jobs:
           version: 1.4.309.0
           cache: true
 
+      # Bundle Vulkan DLL for Windows users without Vulkan runtime
+      - name: Bundle Vulkan DLL (Windows)
+        if: matrix.platform == 'windows-latest'
+        shell: pwsh
+        run: |
+          $vulkanDll = "$env:VULKAN_SDK\Bin\vulkan-1.dll"
+          $destination = "apps/whispering/src-tauri/vulkan-1.dll"
+          Write-Host "Copying Vulkan DLL from: $vulkanDll"
+          Write-Host "Copying Vulkan DLL to: $destination"
+          Copy-Item $vulkanDll $destination
+          Write-Host "Vulkan DLL bundled successfully"
+
       - name: setup node
         uses: actions/setup-node@v4
         with:

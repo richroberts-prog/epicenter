@@ -32,7 +32,7 @@ const RecordingV6 = type({
 	transcriptionStatus: '"UNPROCESSED" | "TRANSCRIBING" | "DONE" | "FAILED"',
 });
 
-type RecordingV6 = typeof RecordingV6.infer;
+export type RecordingV6 = typeof RecordingV6.infer;
 
 // ============================================================================
 // VERSION 7 (CURRENT)
@@ -62,7 +62,7 @@ const RecordingV7 = type({
 	transcriptionStatus: '"UNPROCESSED" | "TRANSCRIBING" | "DONE" | "FAILED"',
 });
 
-type RecordingV7 = typeof RecordingV7.infer;
+export type RecordingV7 = typeof RecordingV7.infer;
 
 // ============================================================================
 // MIGRATING VALIDATOR
@@ -155,46 +155,24 @@ export type RecordingStoredInIndexedDB = Recording & {
 // ============================================================================
 // DEXIE SCHEMA VERSIONS (for IndexedDB migrations)
 // ============================================================================
-// FROZEN SNAPSHOTS: Each type is a complete, self-contained definition of what
-// the data looked like at that Dexie version. Do not derive from current types!
-// When Recording changes, these historical types must NOT change.
+// V6 and V5 derive from their respective arktype validators.
+// V4 and earlier are FROZEN SNAPSHOTS since they predate the versioned validators.
 // ============================================================================
 
 /**
  * Dexie v0.7 (CURRENT): Recording V7 with 'transcript' field and 'version' field.
- * FROZEN: This represents the schema after the V6→V7 migration.
+ * Derives from RecordingV7 arktype validator.
  */
 export type RecordingsDbSchemaV6 = {
-	recordings: {
-		id: string;
-		title: string;
-		subtitle: string;
-		timestamp: string;
-		createdAt: string;
-		updatedAt: string;
-		version: 7;
-		transcript: string;
-		transcriptionStatus: 'UNPROCESSED' | 'TRANSCRIBING' | 'DONE' | 'FAILED';
-		serializedAudio: SerializedAudio | undefined;
-	};
+	recordings: RecordingV7 & { serializedAudio: SerializedAudio | undefined };
 };
 
 /**
- * Dexie v0.5: Recording with 'transcribedText' field, no 'version' field.
- * FROZEN: This represents the schema BEFORE the V6→V7 migration.
+ * Dexie v0.5: Recording with 'transcribedText' field.
+ * Derives from RecordingV6 arktype validator.
  */
 export type RecordingsDbSchemaV5 = {
-	recordings: {
-		id: string;
-		title: string;
-		subtitle: string;
-		timestamp: string;
-		createdAt: string;
-		updatedAt: string;
-		transcribedText: string;
-		transcriptionStatus: 'UNPROCESSED' | 'TRANSCRIBING' | 'DONE' | 'FAILED';
-		serializedAudio: SerializedAudio | undefined;
-	};
+	recordings: RecordingV6 & { serializedAudio: SerializedAudio | undefined };
 };
 
 /**

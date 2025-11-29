@@ -16,6 +16,7 @@ import {
 	type RecordingsDbSchemaV5,
 	type RecordingsDbSchemaV6,
 	type SerializedAudio,
+	type Transformation,
 	type TransformationRun,
 	type TransformationRunCompleted,
 	type TransformationRunFailed,
@@ -24,7 +25,6 @@ import {
 	type TransformationStepRunFailed,
 	type TransformationStepRunRunning,
 	type TransformationStepV2,
-	type Transformation,
 	type TransformationV1,
 } from './models';
 import type { DbService } from './types';

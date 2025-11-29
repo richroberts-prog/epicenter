@@ -238,28 +238,21 @@ class WhisperingDatabase extends Dexie {
 					tx,
 					version: 0.4,
 					upgrade: async (tx) => {
-						const oldRecordings = await tx
-							.table<RecordingsDbSchemaV3['recordings']>('recordings')
-							.toArray();
-
-						const newRecordings = oldRecordings.map(
-							(record) =>
-								({
-									...record,
-									createdAt: record.timestamp,
-									updatedAt: record.timestamp,
-								}) satisfies RecordingsDbSchemaV4['recordings'],
-						);
-
-						await tx.table('recordings').clear();
+						// Use .modify() to add fields in place
 						await tx
-							.table<RecordingsDbSchemaV4['recordings']>('recordings')
-							.bulkAdd(newRecordings);
+							.table<RecordingsDbSchemaV3['recordings']>('recordings')
+							.toCollection()
+							.modify((recording) => {
+								// @ts-expect-error - Adding new field during migration
+								recording.createdAt = recording.timestamp;
+								// @ts-expect-error - Adding new field during migration
+								recording.updatedAt = recording.timestamp;
+							});
 					},
 				});
 			});
 
-		// V5: Save recording blob as ArrayBuffer
+		// V5: Save recording blob as ArrayBuffer (for iOS Safari compatibility)
 		this.version(0.5)
 			.stores({
 				recordings: '&id, timestamp, createdAt, updatedAt',
@@ -271,6 +264,8 @@ class WhisperingDatabase extends Dexie {
 					tx,
 					version: 0.5,
 					upgrade: async (tx) => {
+						// Note: Using clear/bulkAdd here instead of .modify() because the async
+						// blob→ArrayBuffer conversion is complex and this pattern is battle-tested.
 						const oldRecordings = await tx
 							.table<RecordingsDbSchemaV4['recordings']>('recordings')
 							.toArray();
@@ -278,7 +273,6 @@ class WhisperingDatabase extends Dexie {
 						const newRecordings = await Dexie.waitFor(
 							Promise.all(
 								oldRecordings.map(async (record) => {
-									// Convert V4 (Recording with blob) to V5 (RecordingStoredInIndexedDB)
 									const { blob, ...recordWithoutBlob } = record;
 									const serializedAudio = blob
 										? await blobToSerializedAudio(blob)

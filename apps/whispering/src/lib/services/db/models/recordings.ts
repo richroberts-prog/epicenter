@@ -22,7 +22,7 @@ export type Recording = {
 	timestamp: string;
 	createdAt: string;
 	updatedAt: string;
-	transcribedText: string;
+	transcript: string;
 	/**
 	 * Recording lifecycle status:
 	 * 1. Begins in 'UNPROCESSED' state
@@ -92,7 +92,7 @@ export type RecordingsDbSchemaV1 = {
 		title: string;
 		subtitle: string;
 		timestamp: string;
-		transcribedText: string;
+		transcript: string;
 		blob: Blob | undefined;
 		/**
 		 * A recording

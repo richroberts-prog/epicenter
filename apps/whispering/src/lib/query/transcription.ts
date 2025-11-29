@@ -52,7 +52,7 @@ export const transcription = {
 					},
 				});
 			}
-			const { data: transcribedText, error: transcribeError } =
+			const { data: transcript, error: transcribeError } =
 				await transcribeBlob(audioBlob);
 			if (transcribeError) {
 				const { error: setRecordingTranscribingError } =
@@ -77,7 +77,7 @@ export const transcription = {
 			const { error: setRecordingTranscribedTextError } =
 				await db.recordings.update.execute({
 					...recording,
-					transcribedText,
+					transcript,
 					transcriptionStatus: 'DONE',
 				});
 			if (setRecordingTranscribedTextError) {
@@ -91,7 +91,7 @@ export const transcription = {
 					},
 				});
 			}
-			return Ok(transcribedText);
+			return Ok(transcript);
 		},
 	}),
 

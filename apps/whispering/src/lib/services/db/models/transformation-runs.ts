@@ -62,8 +62,8 @@ const BaseTransformationRun = {
 	startedAt: 'string',
 	completedAt: 'string | null',
 	/**
-	 * Because the recording's transcribedText can change after invoking,
-	 * we store a snapshot of the transcribedText at the time of invoking.
+	 * Because the recording's transcript can change after invoking,
+	 * we store a snapshot of the transcript at the time of invoking.
 	 */
 	input: 'string',
 	stepRuns: [TransformationStepRun, '[]'],

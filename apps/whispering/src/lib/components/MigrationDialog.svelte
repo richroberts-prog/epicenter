@@ -79,7 +79,7 @@
 				'This is a medium-length recording with a bit more content to transcribe and process.',
 				`This is a longer recording transcript. It contains multiple sentences and paragraphs of content. ${Array(10).fill('Lorem ipsum dolor sit amet, consectetur adipiscing elit.').join(' ')}`,
 			];
-			const transcribedText = textLengths[index % textLengths.length];
+			const transcript = textLengths[index % textLengths.length];
 
 			const id = nanoid();
 			const now = new Date().toISOString();
@@ -91,7 +91,7 @@
 				timestamp: timestampStr,
 				createdAt: now,
 				updatedAt: now,
-				transcribedText,
+				transcript,
 				transcriptionStatus,
 				serializedAudio: _generateMockAudio(),
 			};

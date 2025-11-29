@@ -79,11 +79,11 @@
 							action: { type: 'more-details', error: error },
 						});
 					},
-					onSuccess: (transcribedText) => {
+					onSuccess: (transcript) => {
 						rpc.sound.playSoundIfEnabled.execute('transcriptionComplete');
 
 						rpc.delivery.deliverTranscriptionResult.execute({
-							text: transcribedText,
+							text: transcript,
 							toastId,
 						});
 					},
@@ -109,10 +109,10 @@
 
 		<CopyToClipboardButton
 			contentDescription="transcript"
-			textToCopy={recording.transcribedText}
+			textToCopy={recording.transcript}
 			viewTransitionName={getRecordingTransitionId({
 				recordingId,
-				propertyName: 'transcribedText',
+				propertyName: 'transcript',
 			})}
 		>
 			<ClipboardIcon class="size-4" />

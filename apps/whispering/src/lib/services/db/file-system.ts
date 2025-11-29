@@ -20,7 +20,7 @@ import type { DbService } from './types';
 import { DbServiceErr } from './types';
 
 /**
- * Schema validator for Recording front matter (everything except transcribedText)
+ * Schema validator for Recording front matter (everything except transcript)
  */
 const RecordingFrontMatter = type({
 	id: 'string',
@@ -38,8 +38,8 @@ type RecordingFrontMatter = typeof RecordingFrontMatter.infer;
  * Convert Recording to markdown format (frontmatter + body)
  */
 function recordingToMarkdown(recording: Recording): string {
-	const { transcribedText, ...frontMatter } = recording;
-	return matter.stringify(transcribedText ?? '', frontMatter);
+	const { transcript, ...frontMatter } = recording;
+	return matter.stringify(transcript ?? '', frontMatter);
 }
 
 /**
@@ -54,7 +54,7 @@ function markdownToRecording({
 }): Recording {
 	return {
 		...frontMatter,
-		transcribedText: body,
+		transcript: body,
 	};
 }
 

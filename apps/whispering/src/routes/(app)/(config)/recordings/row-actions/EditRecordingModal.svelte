@@ -171,14 +171,14 @@
 				/>
 			</div>
 			<div class="grid grid-cols-4 items-center gap-4">
-				<Label for="transcribedText" class="text-right">Transcript</Label>
+				<Label for="transcript" class="text-right">Transcript</Label>
 				<Textarea
-					id="transcribedText"
-					value={workingCopy.transcribedText}
+					id="transcript"
+					value={workingCopy.transcript}
 					oninput={(e) => {
 						workingCopy = {
 							...workingCopy,
-							transcribedText: e.currentTarget.value,
+							transcript: e.currentTarget.value,
 						};
 						isWorkingCopyDirty = true;
 					}}

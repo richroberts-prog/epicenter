@@ -51,7 +51,7 @@
 			updatedAt: '',
 			timestamp: '',
 			blob: new Blob(),
-			transcribedText: '',
+			transcript: '',
 			transcriptionStatus: 'UNPROCESSED',
 		},
 	);
@@ -64,7 +64,7 @@
 	});
 
 	const hasNoTranscribedText = $derived(
-		!latestRecording.transcribedText?.trim(),
+		!latestRecording.transcript?.trim(),
 	);
 
 	const availableModes = $derived(
@@ -317,10 +317,10 @@
 				<div class="flex-1">
 					<TranscriptDialog
 						recordingId={latestRecording.id}
-						transcribedText={latestRecording.transcriptionStatus ===
+						transcript={latestRecording.transcriptionStatus ===
 						'TRANSCRIBING'
 							? '...'
-							: latestRecording.transcribedText}
+							: latestRecording.transcript}
 						rows={1}
 						disabled={latestRecording.transcriptionStatus === 'TRANSCRIBING' ||
 							hasNoTranscribedText}
@@ -328,10 +328,10 @@
 				</div>
 				<CopyToClipboardButton
 					contentDescription="transcript"
-					textToCopy={latestRecording.transcribedText}
+					textToCopy={latestRecording.transcript}
 					viewTransitionName={getRecordingTransitionId({
 						recordingId: latestRecording.id,
-						propertyName: 'transcribedText',
+						propertyName: 'transcript',
 					})}
 					size="default"
 					variant="secondary"

@@ -628,7 +628,7 @@ async function processRecordingPipeline({
 		timestamp: now,
 		createdAt: now,
 		updatedAt: now,
-		transcribedText: '',
+		transcript: '',
 		transcriptionStatus: 'UNPROCESSED',
 	} as const;
 
@@ -661,7 +661,7 @@ async function processRecordingPipeline({
 		description: 'Your recording is being transcribed...',
 	});
 
-	const { data: transcribedText, error: transcribeError } =
+	const { data: transcript, error: transcribeError } =
 		await transcription.transcribeRecording.execute(recording);
 
 	if (transcribeError) {
@@ -681,7 +681,7 @@ async function processRecordingPipeline({
 	sound.playSoundIfEnabled.execute('transcriptionComplete');
 
 	await delivery.deliverTranscriptionResult.execute({
-		text: transcribedText,
+		text: transcript,
 		toastId: transcribeToastId,
 	});
 

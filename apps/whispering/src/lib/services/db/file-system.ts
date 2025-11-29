@@ -45,6 +45,7 @@ function parseMarkdownToRecording(
 ): Result<Recording, { summary: string }> {
 	const { data: frontMatter, content: body } = matter(content);
 
+	// Recording validator accepts V6 or V7 input and always outputs V7
 	const result = Recording({
 		...frontMatter,
 		transcribedText: body, // V6 schema: body maps to transcribedText, version defaults to 6

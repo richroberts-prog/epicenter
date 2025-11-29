@@ -70,7 +70,18 @@ type RecordingV7 = typeof RecordingV7.infer;
 
 /**
  * Recording validator with automatic migration.
- * Accepts V6 or V7 and always outputs V7.
+ *
+ * Input: Raw object with either V6 fields (transcribedText) or V7 fields (transcript).
+ *        If version is missing, defaults to 6.
+ *
+ * Output: Always returns the latest schema (V7) with 'transcript' field.
+ *         V6 inputs are automatically migrated via the .pipe() transformation.
+ *
+ * Usage:
+ * ```ts
+ * const result = Recording({ ...frontMatter, transcribedText: body });
+ * // result is always V7 shape: { version: 7, transcript: string, ... }
+ * ```
  */
 export const Recording = RecordingV6.or(RecordingV7).pipe(
 	(recording): RecordingV7 => {

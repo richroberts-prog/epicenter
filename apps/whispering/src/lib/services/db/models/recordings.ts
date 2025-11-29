@@ -155,37 +155,105 @@ export type RecordingStoredInIndexedDB = Recording & {
 // ============================================================================
 // DEXIE SCHEMA VERSIONS (for IndexedDB migrations)
 // ============================================================================
-// These types represent the structure of the IndexedDB tables at each Dexie version.
-// They are separate from the Recording schema versions above.
+// FROZEN SNAPSHOTS: Each type is a complete, self-contained definition of what
+// the data looked like at that Dexie version. Do not derive from current types!
+// When Recording changes, these historical types must NOT change.
 // ============================================================================
 
+/**
+ * Dexie v0.7 (CURRENT): Recording V7 with 'transcript' field and 'version' field.
+ * FROZEN: This represents the schema after the V6→V7 migration.
+ */
 export type RecordingsDbSchemaV6 = {
-	recordings: RecordingStoredInIndexedDB;
-};
-
-export type RecordingsDbSchemaV5 = {
-	recordings: Omit<RecordingStoredInIndexedDB, 'transcript' | 'version'> & {
-		transcribedText: string;
-	};
-};
-
-export type RecordingsDbSchemaV4 = {
-	recordings: RecordingsDbSchemaV3['recordings'] & {
-		// V4 added 'createdAt' and 'updatedAt' fields
+	recordings: {
+		id: string;
+		title: string;
+		subtitle: string;
+		timestamp: string;
 		createdAt: string;
 		updatedAt: string;
+		version: 7;
+		transcript: string;
+		transcriptionStatus: 'UNPROCESSED' | 'TRANSCRIBING' | 'DONE' | 'FAILED';
+		serializedAudio: SerializedAudio | undefined;
 	};
 };
 
+/**
+ * Dexie v0.5: Recording with 'transcribedText' field, no 'version' field.
+ * FROZEN: This represents the schema BEFORE the V6→V7 migration.
+ */
+export type RecordingsDbSchemaV5 = {
+	recordings: {
+		id: string;
+		title: string;
+		subtitle: string;
+		timestamp: string;
+		createdAt: string;
+		updatedAt: string;
+		transcribedText: string;
+		transcriptionStatus: 'UNPROCESSED' | 'TRANSCRIBING' | 'DONE' | 'FAILED';
+		serializedAudio: SerializedAudio | undefined;
+	};
+};
+
+/**
+ * Dexie v0.4: Added createdAt/updatedAt, still uses Blob for audio.
+ * FROZEN: Do not modify.
+ */
+export type RecordingsDbSchemaV4 = {
+	recordings: {
+		id: string;
+		title: string;
+		subtitle: string;
+		timestamp: string;
+		createdAt: string;
+		updatedAt: string;
+		transcribedText: string;
+		transcriptionStatus: 'UNPROCESSED' | 'TRANSCRIBING' | 'DONE' | 'FAILED';
+		blob: Blob | undefined;
+	};
+};
+
+/**
+ * Dexie v0.3: Merged recordingMetadata + recordingBlobs back into recordings.
+ * FROZEN: Do not modify.
+ */
 export type RecordingsDbSchemaV3 = {
-	recordings: RecordingsDbSchemaV1['recordings'];
+	recordings: {
+		id: string;
+		title: string;
+		subtitle: string;
+		timestamp: string;
+		transcribedText: string;
+		transcriptionStatus: 'UNPROCESSED' | 'TRANSCRIBING' | 'DONE' | 'FAILED';
+		blob: Blob | undefined;
+	};
 };
 
+/**
+ * Dexie v0.2: Split recordings into recordingMetadata + recordingBlobs.
+ * FROZEN: Do not modify.
+ */
 export type RecordingsDbSchemaV2 = {
-	recordingMetadata: Omit<RecordingsDbSchemaV1['recordings'], 'blob'>;
-	recordingBlobs: { id: string; blob: Blob | undefined };
+	recordingMetadata: {
+		id: string;
+		title: string;
+		subtitle: string;
+		timestamp: string;
+		transcribedText: string;
+		transcriptionStatus: 'UNPROCESSED' | 'TRANSCRIBING' | 'DONE' | 'FAILED';
+	};
+	recordingBlobs: {
+		id: string;
+		blob: Blob | undefined;
+	};
 };
 
+/**
+ * Dexie v0.1: Original recordings table with Blob storage.
+ * FROZEN: Do not modify.
+ */
 export type RecordingsDbSchemaV1 = {
 	recordings: {
 		id: string;
@@ -193,14 +261,7 @@ export type RecordingsDbSchemaV1 = {
 		subtitle: string;
 		timestamp: string;
 		transcribedText: string;
-		blob: Blob | undefined;
-		/**
-		 * A recording
-		 * 1. Begins in an 'UNPROCESSED' state
-		 * 2. Moves to 'TRANSCRIBING' while the audio is being transcribed
-		 * 3. Finally is marked as 'DONE' when the transcription is complete.
-		 * 4. If the transcription fails, it is marked as 'FAILED'
-		 */
 		transcriptionStatus: 'UNPROCESSED' | 'TRANSCRIBING' | 'DONE' | 'FAILED';
+		blob: Blob | undefined;
 	};
 };

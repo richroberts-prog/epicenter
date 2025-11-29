@@ -279,6 +279,7 @@ class WhisperingDatabase extends Dexie {
 										: undefined;
 									return {
 										...recordWithoutBlob,
+										version: 6,
 										serializedAudio,
 									} satisfies RecordingsDbSchemaV5['recordings'];
 								}),
@@ -368,7 +369,7 @@ class WhisperingDatabase extends Dexie {
 								// @ts-expect-error - We're migrating the schema, so these fields don't exist yet
 								recording.transcript = transcribedText ?? '';
 								// @ts-expect-error - Adding new field during migration
-								recording.version = CURRENT_RECORDING_VERSION;
+								recording.version = 7;
 								// @ts-expect-error - Removing old field during migration
 								delete recording.transcribedText;
 							});

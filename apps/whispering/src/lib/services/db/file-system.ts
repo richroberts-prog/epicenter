@@ -14,51 +14,66 @@ import { Ok, tryAsync } from 'wellcrafted/result';
 import { getExtensionFromMimeType } from '$lib/constants/mime';
 import { PATHS } from '$lib/constants/paths';
 import * as services from '$lib/services';
-import { CURRENT_RECORDING_VERSION, type Recording } from './models';
+import {
+	CURRENT_RECORDING_VERSION,
+	Recording,
+	type Recording as RecordingType,
+} from './models';
 import { Transformation, TransformationRun } from './models';
 import type { DbService } from './types';
 import { DbServiceErr } from './types';
 
 /**
- * Schema validator for Recording front matter (everything except transcript)
- */
-const RecordingFrontMatter = type({
-	id: 'string',
-	title: 'string',
-	subtitle: 'string',
-	timestamp: 'string',
-	createdAt: 'string',
-	updatedAt: 'string',
-	transcriptionStatus: '"UNPROCESSED" | "TRANSCRIBING" | "DONE" | "FAILED"',
-});
-
-type RecordingFrontMatter = typeof RecordingFrontMatter.infer;
-
-/**
  * Convert Recording to markdown format (frontmatter + body)
- * The version field is excluded from frontmatter as it's only used for IndexedDB migrations.
+ *
+ * Storage format:
+ * - Frontmatter: All metadata fields (id, title, subtitle, etc.) but NOT version
+ * - Body: The transcript text
+ *
+ * Version is excluded from frontmatter because desktop files don't need versioning;
+ * they always store transcript in the body (never had transcribedText in frontmatter).
+ * When reading, we use the Recording validator which handles any schema version.
  */
-function recordingToMarkdown(recording: Recording): string {
+function recordingToMarkdown(recording: RecordingType): string {
 	const { transcript, version: _version, ...frontMatter } = recording;
 	return matter.stringify(transcript ?? '', frontMatter);
 }
 
 /**
- * Convert markdown file (YAML frontmatter + body) to Recording
- * Always constructs with current version as desktop storage doesn't track versions.
+ * Parse markdown file content into a Recording using the migrating validator.
+ *
+ * The Recording validator accepts V6 (transcribedText) or V7 (transcript) schemas
+ * and always outputs V7. For desktop files:
+ * - Frontmatter contains metadata (no version field stored)
+ * - Body contains the transcript
+ * - We combine them and validate through Recording which auto-migrates if needed
+ *
+ * Note: Desktop files never had transcribedText in frontmatter (transcript was always in body),
+ * so migration mainly ensures the version field is set correctly.
  */
-function markdownToRecording({
-	frontMatter,
-	body,
-}: {
-	frontMatter: RecordingFrontMatter;
-	body: string;
-}): Recording {
-	return {
+function parseMarkdownToRecording(
+	content: string,
+): RecordingType | { error: string } {
+	const { data: frontMatter, content: body } = matter(content);
+
+	// Combine frontmatter + body, defaulting version to 6 for old files without version
+	// The Recording validator will migrate V6 → V7 automatically
+	const rawRecording = {
 		...frontMatter,
-		version: CURRENT_RECORDING_VERSION,
-		transcript: body,
+		version: frontMatter.version ?? 6, // Default to V6 for files without version
+		// Support both old (transcribedText) and new (transcript) field names
+		// Old desktop files use body as transcript, but we check frontmatter too for safety
+		transcript: body || frontMatter.transcript,
+		transcribedText: frontMatter.transcribedText,
 	};
+
+	// Validate and migrate through the Recording validator
+	const result = Recording(rawRecording);
+	if (result instanceof type.errors) {
+		return { error: result.summary };
+	}
+
+	return result;
 }
 
 /**
@@ -104,22 +119,19 @@ export function createFileSystemDb(): DbService {
 						// Use Rust command to read all markdown files at once
 						const contents = await readMarkdownFiles(recordingsPath);
 
-						// Parse all files
+						// Parse all files using the Recording validator (handles V6→V7 migration)
 						const recordings = contents.map((content) => {
-							const { data, content: body } = matter(content);
-
-							// Validate the front matter schema
-							const frontMatter = RecordingFrontMatter(data);
-							if (frontMatter instanceof type.errors) {
+							const result = parseMarkdownToRecording(content);
+							if ('error' in result) {
+								console.error('Invalid recording:', result.error);
 								return null; // Skip invalid recording, don't crash the app
 							}
-
-							return markdownToRecording({ frontMatter, body });
+							return result;
 						});
 
 						// Filter out any null entries and sort by timestamp (newest first)
 						const validRecordings = recordings.filter(
-							(r): r is Recording => r !== null,
+							(r): r is RecordingType => r !== null,
 						);
 						validRecordings.sort(
 							(a, b) =>
@@ -183,17 +195,14 @@ export function createFileSystemDb(): DbService {
 						if (!fileExists) return null;
 
 						const content = await readTextFile(mdPath);
-						const { data, content: body } = matter(content);
 
-						// Validate the front matter schema
-						const frontMatter = RecordingFrontMatter(data);
-						if (frontMatter instanceof type.errors) {
-							throw new Error(
-								`Invalid recording front matter: ${frontMatter.summary}`,
-							);
+						// Parse using the Recording validator (handles V6→V7 migration)
+						const result = parseMarkdownToRecording(content);
+						if ('error' in result) {
+							throw new Error(`Invalid recording: ${result.error}`);
 						}
 
-						return markdownToRecording({ frontMatter, body });
+						return result;
 					},
 					catch: (error) =>
 						DbServiceErr({
@@ -210,7 +219,7 @@ export function createFileSystemDb(): DbService {
 					recording,
 					audio,
 				}: {
-					recording: Recording;
+					recording: RecordingType;
 					audio: Blob;
 				}): Promise<void> => {
 					const recordingsPath = await PATHS.DB.RECORDINGS();
@@ -268,7 +277,7 @@ export function createFileSystemDb(): DbService {
 				const recordingWithTimestamp = {
 					...recording,
 					updatedAt: now,
-				} satisfies Recording;
+				} satisfies RecordingType;
 
 				return tryAsync({
 					try: async () => {

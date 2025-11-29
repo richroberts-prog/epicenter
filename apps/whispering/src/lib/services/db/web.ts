@@ -345,10 +345,14 @@ class WhisperingDatabase extends Dexie {
 				});
 			});
 
-		// V7: Migrate recordings from V6 schema to V7 schema
+		// V7: Migrate recordings from V5 schema to V6 schema (Recording V6 → V7)
 		// - Renames 'transcribedText' field to 'transcript'
 		// - Adds 'version' field (set to 7)
 		// This matches the versioned schema in recordings.ts
+		//
+		// Note: Dexie schema versions (0.1-0.7) are separate from Recording schema versions (V6-V7).
+		// - RecordingsDbSchemaV5 (Dexie v0.5): Recording data with 'transcribedText'
+		// - RecordingsDbSchemaV6 (Dexie v0.7): Recording data with 'transcript' and 'version'
 		this.version(0.7)
 			.stores({
 				recordings: '&id, timestamp, createdAt, updatedAt',
@@ -360,27 +364,20 @@ class WhisperingDatabase extends Dexie {
 					tx,
 					version: 0.7,
 					upgrade: async (tx) => {
-						// RecordingsDbSchemaV5 has 'transcribedText'; we migrate to V6 with 'transcript'
-						const recordings = await tx
+						// Use .modify() to update records in place (safer than clear/bulkAdd)
+						await tx
 							.table<RecordingsDbSchemaV5['recordings']>('recordings')
-							.toArray();
-
-						const migratedRecordings = recordings.map((recording) => {
-							// eslint-disable-next-line @typescript-eslint/no-explicit-any
-							const { transcribedText, ...rest } = recording as any;
-							return {
-								...rest,
-								version: CURRENT_RECORDING_VERSION,
-								transcript: transcribedText ?? '',
-							} satisfies RecordingsDbSchemaV6['recordings'];
-						});
-
-						await Dexie.waitFor(tx.table('recordings').clear());
-						await Dexie.waitFor(
-							tx
-								.table<RecordingsDbSchemaV6['recordings']>('recordings')
-								.bulkAdd(migratedRecordings),
-						);
+							.toCollection()
+							.modify((recording) => {
+								// Rename transcribedText → transcript and add version
+								const transcribedText = recording.transcribedText;
+								// @ts-expect-error - We're migrating the schema, so these fields don't exist yet
+								recording.transcript = transcribedText ?? '';
+								// @ts-expect-error - Adding new field during migration
+								recording.version = CURRENT_RECORDING_VERSION;
+								// @ts-expect-error - Removing old field during migration
+								delete recording.transcribedText;
+							});
 					},
 				});
 			});

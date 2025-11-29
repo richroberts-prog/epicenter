@@ -37,37 +37,23 @@ function recordingToMarkdown(recording: Recording): string {
 /**
  * Parse markdown file content into a Recording using the migrating validator.
  *
- * The Recording validator accepts V6 (transcribedText) or V7 (transcript) schemas
- * and always outputs V7. For desktop files:
- * - Frontmatter contains metadata (no version field stored)
- * - Body contains the transcript
- * - We combine them and validate through Recording which auto-migrates if needed
- *
- * Note: Desktop files never had transcribedText in frontmatter (transcript was always in body),
- * so migration mainly ensures the version field is set correctly.
+ * Desktop files are treated as V6 schema (no version field stored, body = transcript).
+ * The Recording validator defaults version to 6, then migrates V6 → V7 automatically.
  */
 function parseMarkdownToRecording(
 	content: string,
 ): Recording | { error: string } {
 	const { data: frontMatter, content: body } = matter(content);
 
-	// Combine frontmatter + body, defaulting version to 6 for old files without version
-	// The Recording validator will migrate V6 → V7 automatically
-	const rawRecording = {
+	const result = Recording({
 		...frontMatter,
-		version: frontMatter.version ?? 6, // Default to V6 for files without version
-		// Support both old (transcribedText) and new (transcript) field names
-		// Old desktop files use body as transcript, but we check frontmatter too for safety
-		transcript: body || frontMatter.transcript,
-		transcribedText: frontMatter.transcribedText,
-	};
+		transcribedText: body, // V6 schema: body maps to transcribedText, version defaults to 6
+		transcript: body, // V7 schema: body maps to transcript
+	});
 
-	// Validate and migrate through the Recording validator
-	const result = Recording(rawRecording);
 	if (result instanceof type.errors) {
 		return { error: result.summary };
 	}
-
 	return result;
 }
 

@@ -14,12 +14,7 @@ import { Ok, tryAsync } from 'wellcrafted/result';
 import { getExtensionFromMimeType } from '$lib/constants/mime';
 import { PATHS } from '$lib/constants/paths';
 import * as services from '$lib/services';
-import {
-	CURRENT_RECORDING_VERSION,
-	Recording,
-	type Recording as RecordingType,
-} from './models';
-import { Transformation, TransformationRun } from './models';
+import { Recording, Transformation, TransformationRun } from './models';
 import type { DbService } from './types';
 import { DbServiceErr } from './types';
 
@@ -34,7 +29,7 @@ import { DbServiceErr } from './types';
  * they always store transcript in the body (never had transcribedText in frontmatter).
  * When reading, we use the Recording validator which handles any schema version.
  */
-function recordingToMarkdown(recording: RecordingType): string {
+function recordingToMarkdown(recording: Recording): string {
 	const { transcript, version: _version, ...frontMatter } = recording;
 	return matter.stringify(transcript ?? '', frontMatter);
 }
@@ -53,7 +48,7 @@ function recordingToMarkdown(recording: RecordingType): string {
  */
 function parseMarkdownToRecording(
 	content: string,
-): RecordingType | { error: string } {
+): Recording | { error: string } {
 	const { data: frontMatter, content: body } = matter(content);
 
 	// Combine frontmatter + body, defaulting version to 6 for old files without version
@@ -131,7 +126,7 @@ export function createFileSystemDb(): DbService {
 
 						// Filter out any null entries and sort by timestamp (newest first)
 						const validRecordings = recordings.filter(
-							(r): r is RecordingType => r !== null,
+							(r): r is Recording => r !== null,
 						);
 						validRecordings.sort(
 							(a, b) =>
@@ -219,7 +214,7 @@ export function createFileSystemDb(): DbService {
 					recording,
 					audio,
 				}: {
-					recording: RecordingType;
+					recording: Recording;
 					audio: Blob;
 				}): Promise<void> => {
 					const recordingsPath = await PATHS.DB.RECORDINGS();
@@ -277,7 +272,7 @@ export function createFileSystemDb(): DbService {
 				const recordingWithTimestamp = {
 					...recording,
 					updatedAt: now,
-				} satisfies RecordingType;
+				} satisfies Recording;
 
 				return tryAsync({
 					try: async () => {

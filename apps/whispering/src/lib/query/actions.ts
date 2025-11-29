@@ -2,6 +2,7 @@ import { nanoid } from 'nanoid/non-secure';
 import { Err, Ok } from 'wellcrafted/result';
 import { fromTaggedError, WhisperingErr } from '$lib/result';
 import { DbServiceErr } from '$lib/services/db';
+import { CURRENT_RECORDING_VERSION } from '$lib/services/db/models';
 import { settings } from '$lib/stores/settings.svelte';
 import * as transformClipboardWindow from '../../routes/transform-clipboard/transformClipboardWindow.tauri';
 import { rpc } from './';
@@ -623,6 +624,7 @@ async function processRecordingPipeline({
 
 	const recording = {
 		id: newRecordingId,
+		version: CURRENT_RECORDING_VERSION,
 		title: '',
 		subtitle: '',
 		timestamp: now,

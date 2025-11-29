@@ -19,7 +19,7 @@
 	} from '$lib/constants/audio';
 	import { rpc } from '$lib/query';
 	import * as services from '$lib/services';
-	import type { Recording } from '$lib/services/db';
+	import { CURRENT_RECORDING_VERSION, type Recording } from '$lib/services/db';
 	import { settings } from '$lib/stores/settings.svelte';
 	import { createBlobUrlManager } from '$lib/utils/blobUrlManager';
 	import { getRecordingTransitionId } from '$lib/utils/getRecordingTransitionId';
@@ -45,6 +45,7 @@
 	const latestRecording = $derived<Recording>(
 		latestRecordingQuery.data ?? {
 			id: '',
+			version: CURRENT_RECORDING_VERSION,
 			title: '',
 			subtitle: '',
 			createdAt: '',

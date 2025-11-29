@@ -6,24 +6,26 @@ import { moreDetailsDialog } from '$lib/components/MoreDetailsDialog.svelte';
 import { rpc } from '$lib/query';
 import type { DownloadService } from '$lib/services/download';
 import type { Settings } from '$lib/settings';
-import type {
-	Recording,
-	RecordingsDbSchemaV1,
-	RecordingsDbSchemaV2,
-	RecordingsDbSchemaV3,
-	RecordingsDbSchemaV4,
-	RecordingsDbSchemaV5,
-	SerializedAudio,
-	TransformationRun,
-	TransformationRunCompleted,
-	TransformationRunFailed,
-	TransformationRunRunning,
-	TransformationStepRunCompleted,
-	TransformationStepRunFailed,
-	TransformationStepRunRunning,
-	TransformationStepV2,
-	Transformation,
-	TransformationV1,
+import {
+	CURRENT_RECORDING_VERSION,
+	type Recording,
+	type RecordingsDbSchemaV1,
+	type RecordingsDbSchemaV2,
+	type RecordingsDbSchemaV3,
+	type RecordingsDbSchemaV4,
+	type RecordingsDbSchemaV5,
+	type RecordingsDbSchemaV6,
+	type SerializedAudio,
+	type TransformationRun,
+	type TransformationRunCompleted,
+	type TransformationRunFailed,
+	type TransformationRunRunning,
+	type TransformationStepRunCompleted,
+	type TransformationStepRunFailed,
+	type TransformationStepRunRunning,
+	type TransformationStepV2,
+	type Transformation,
+	type TransformationV1,
 } from './models';
 import type { DbService } from './types';
 import { DbServiceErr } from './types';
@@ -31,7 +33,7 @@ import { DbServiceErr } from './types';
 const DB_NAME = 'RecordingDB';
 
 class WhisperingDatabase extends Dexie {
-	recordings!: Dexie.Table<RecordingsDbSchemaV5['recordings'], string>;
+	recordings!: Dexie.Table<RecordingsDbSchemaV6['recordings'], string>;
 	transformations!: Dexie.Table<Transformation, string>;
 	transformationRuns!: Dexie.Table<TransformationRun, string>;
 
@@ -339,6 +341,46 @@ class WhisperingDatabase extends Dexie {
 								.table<Transformation>('transformations')
 								.update(transformation.id, { steps: updatedSteps });
 						}
+					},
+				});
+			});
+
+		// V7: Migrate recordings from V6 schema to V7 schema
+		// - Renames 'transcribedText' field to 'transcript'
+		// - Adds 'version' field (set to 7)
+		// This matches the versioned schema in recordings.ts
+		this.version(0.7)
+			.stores({
+				recordings: '&id, timestamp, createdAt, updatedAt',
+				transformations: '&id, createdAt, updatedAt',
+				transformationRuns: '&id, transformationId, recordingId, startedAt',
+			})
+			.upgrade(async (tx) => {
+				await wrapUpgradeWithErrorHandling({
+					tx,
+					version: 0.7,
+					upgrade: async (tx) => {
+						// RecordingsDbSchemaV5 has 'transcribedText'; we migrate to V6 with 'transcript'
+						const recordings = await tx
+							.table<RecordingsDbSchemaV5['recordings']>('recordings')
+							.toArray();
+
+						const migratedRecordings = recordings.map((recording) => {
+							// eslint-disable-next-line @typescript-eslint/no-explicit-any
+							const { transcribedText, ...rest } = recording as any;
+							return {
+								...rest,
+								version: CURRENT_RECORDING_VERSION,
+								transcript: transcribedText ?? '',
+							} satisfies RecordingsDbSchemaV6['recordings'];
+						});
+
+						await Dexie.waitFor(tx.table('recordings').clear());
+						await Dexie.waitFor(
+							tx
+								.table<RecordingsDbSchemaV6['recordings']>('recordings')
+								.bulkAdd(migratedRecordings),
+						);
 					},
 				});
 			});

@@ -14,7 +14,7 @@ import { Ok, tryAsync } from 'wellcrafted/result';
 import { getExtensionFromMimeType } from '$lib/constants/mime';
 import { PATHS } from '$lib/constants/paths';
 import * as services from '$lib/services';
-import type { Recording } from './models';
+import { CURRENT_RECORDING_VERSION, type Recording } from './models';
 import { Transformation, TransformationRun } from './models';
 import type { DbService } from './types';
 import { DbServiceErr } from './types';
@@ -36,14 +36,16 @@ type RecordingFrontMatter = typeof RecordingFrontMatter.infer;
 
 /**
  * Convert Recording to markdown format (frontmatter + body)
+ * The version field is excluded from frontmatter as it's only used for IndexedDB migrations.
  */
 function recordingToMarkdown(recording: Recording): string {
-	const { transcript, ...frontMatter } = recording;
+	const { transcript, version: _version, ...frontMatter } = recording;
 	return matter.stringify(transcript ?? '', frontMatter);
 }
 
 /**
  * Convert markdown file (YAML frontmatter + body) to Recording
+ * Always constructs with current version as desktop storage doesn't track versions.
  */
 function markdownToRecording({
 	frontMatter,
@@ -54,6 +56,7 @@ function markdownToRecording({
 }): Recording {
 	return {
 		...frontMatter,
+		version: CURRENT_RECORDING_VERSION,
 		transcript: body,
 	};
 }

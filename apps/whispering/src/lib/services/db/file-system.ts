@@ -10,7 +10,7 @@ import {
 } from '@tauri-apps/plugin-fs';
 import { type } from 'arktype';
 import matter from 'gray-matter';
-import { Ok, tryAsync } from 'wellcrafted/result';
+import { Err, Ok, tryAsync, type Result } from 'wellcrafted/result';
 import { getExtensionFromMimeType } from '$lib/constants/mime';
 import { PATHS } from '$lib/constants/paths';
 import * as services from '$lib/services';
@@ -42,7 +42,7 @@ function recordingToMarkdown(recording: Recording): string {
  */
 function parseMarkdownToRecording(
 	content: string,
-): Recording | { error: string } {
+): Result<Recording, { summary: string }> {
 	const { data: frontMatter, content: body } = matter(content);
 
 	const result = Recording({
@@ -52,9 +52,9 @@ function parseMarkdownToRecording(
 	});
 
 	if (result instanceof type.errors) {
-		return { error: result.summary };
+		return Err({ summary: result.summary });
 	}
-	return result;
+	return Ok(result);
 }
 
 /**
@@ -102,12 +102,12 @@ export function createFileSystemDb(): DbService {
 
 						// Parse all files using the Recording validator (handles V6→V7 migration)
 						const recordings = contents.map((content) => {
-							const result = parseMarkdownToRecording(content);
-							if ('error' in result) {
-								console.error('Invalid recording:', result.error);
+							const { data, error } = parseMarkdownToRecording(content);
+							if (error) {
+								console.error('Invalid recording:', error.summary);
 								return null; // Skip invalid recording, don't crash the app
 							}
-							return result;
+							return data;
 						});
 
 						// Filter out any null entries and sort by timestamp (newest first)
@@ -178,12 +178,13 @@ export function createFileSystemDb(): DbService {
 						const content = await readTextFile(mdPath);
 
 						// Parse using the Recording validator (handles V6→V7 migration)
-						const result = parseMarkdownToRecording(content);
-						if ('error' in result) {
-							throw new Error(`Invalid recording: ${result.error}`);
+						const { data, error } = parseMarkdownToRecording(content);
+						if (error) {
+							const { summary } = error;
+							throw new Error(`Invalid recording: ${summary}`);
 						}
 
-						return result;
+						return data;
 					},
 					catch: (error) =>
 						DbServiceErr({

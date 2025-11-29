@@ -79,56 +79,26 @@ type RecordingV7 = {
 };
 
 // ============================================================================
-// MIGRATING VALIDATORS
+// MIGRATING VALIDATOR
 // ============================================================================
-// These accept any version and migrate to the latest (V7).
-// Use these when reading data that might be from an older schema version.
-// ============================================================================
-
-/**
- * Migrates a Recording from V6 to V7.
- * Renames 'transcribedText' to 'transcript'.
- */
-function migrateV6ToV7(recording: RecordingV6): Recording {
-	const { transcribedText, version: _version, ...rest } = recording;
-	return {
-		...rest,
-		version: 7,
-		transcript: transcribedText,
-	};
-}
 
 /**
  * Recording validator with automatic migration.
  * Accepts V6 or V7 and always outputs V7.
- *
- * Use this when reading data that might contain old schema versions.
- * Internal use only - not exported to avoid type conflicts.
  */
-const RecordingMigrator = RecordingV6.or(RecordingV7).pipe(
-	(recording): Recording => {
+export const Recording = RecordingV6.or(RecordingV7).pipe(
+	(recording): RecordingV7 => {
 		if (recording.version === 6) {
-			return migrateV6ToV7(recording);
+			const { transcribedText, version: _version, ...rest } = recording;
+			return {
+				...rest,
+				version: 7,
+				transcript: transcribedText,
+			};
 		}
 		return recording;
 	},
 );
-
-/**
- * Validate and migrate a recording from any version to current (V7).
- * Use this when reading data that might be from an older schema version.
- */
-export function validateAndMigrateRecording(data: unknown): Recording | null {
-	const result = RecordingMigrator(data);
-	if (result instanceof type.errors) {
-		console.error('Recording validation failed:', result.summary);
-		return null;
-	}
-	return result;
-}
-
-/** Current version constant for use when creating new recordings */
-export { CURRENT_RECORDING_VERSION };
 
 /**
  * Recording intermediate representation.

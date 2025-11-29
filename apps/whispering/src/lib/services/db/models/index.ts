@@ -1,7 +1,9 @@
 // Recordings
-
-export type {
+export {
+	CURRENT_RECORDING_VERSION,
 	Recording,
+} from './recordings';
+export type {
 	RecordingStoredInIndexedDB,
 	RecordingsDbSchemaV1,
 	RecordingsDbSchemaV2,
@@ -10,10 +12,6 @@ export type {
 	RecordingsDbSchemaV5,
 	RecordingsDbSchemaV6,
 	SerializedAudio,
-} from './recordings';
-export {
-	CURRENT_RECORDING_VERSION,
-	validateAndMigrateRecording,
 } from './recordings';
 // Transformation Runs
 export {

@@ -8,7 +8,7 @@ import { type } from 'arktype';
  * - V6: Original schema with 'transcribedText' field (implicit, no version field stored)
  * - V7: Renamed 'transcribedText' to 'transcript'
  */
-const CURRENT_RECORDING_VERSION = 7 as const;
+export const CURRENT_RECORDING_VERSION = 7 as const;
 
 // ============================================================================
 // VERSION 6 (FROZEN)
@@ -62,21 +62,7 @@ const RecordingV7 = type({
 	transcriptionStatus: '"UNPROCESSED" | "TRANSCRIBING" | "DONE" | "FAILED"',
 });
 
-// NOTE: We use an explicit type here rather than `typeof RecordingV7.infer`
-// because arktype's inferred types cause "two different types with this name"
-// errors when the type flows through re-exports. The explicit type ensures
-// TypeScript sees a consistent type across all import paths.
-type RecordingV7 = {
-	version: 7;
-	id: string;
-	title: string;
-	subtitle: string;
-	timestamp: string;
-	createdAt: string;
-	updatedAt: string;
-	transcript: string;
-	transcriptionStatus: 'UNPROCESSED' | 'TRANSCRIBING' | 'DONE' | 'FAILED';
-};
+type RecordingV7 = typeof RecordingV7.infer;
 
 // ============================================================================
 // MIGRATING VALIDATOR

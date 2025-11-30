@@ -25,8 +25,7 @@ export {
 	TransformationStepRunRunning,
 } from './transformation-runs';
 export type {
-	TransformationStepV1,
-	TransformationStepV2,
+	TransformationStep,
 	TransformationV1,
 	TransformationV2,
 } from './transformations';
@@ -37,5 +36,4 @@ export {
 	TRANSFORMATION_STEP_TYPES,
 	TRANSFORMATION_STEP_TYPES_TO_LABELS,
 	Transformation,
-	TransformationStep,
 } from './transformations';

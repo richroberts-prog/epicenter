@@ -24,8 +24,8 @@ import {
 	type TransformationStepRunCompleted,
 	type TransformationStepRunFailed,
 	type TransformationStepRunRunning,
-	type TransformationStepV2,
 	type TransformationV1,
+	type TransformationV2,
 } from './models';
 import type { DbService } from './types';
 import { DbServiceErr } from './types';
@@ -323,7 +323,7 @@ class WhisperingDatabase extends Dexie {
 							.toArray();
 
 						for (const transformation of transformations) {
-							const updatedSteps: TransformationStepV2[] =
+							const updatedSteps: TransformationV2['steps'] =
 								transformation.steps.map((step) => ({
 									...step,
 									// Explicitly set V2 fields (overwrites any existing values)

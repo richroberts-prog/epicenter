@@ -113,8 +113,10 @@ export const Recording = RecordingV6.or(RecordingV7).pipe(
  * - `db.recordings.getAudioBlob(id)` to fetch audio as a Blob
  * - `db.recordings.ensureAudioPlaybackUrl(id)` to get a playback URL
  * - `db.recordings.revokeAudioUrl(id)` to clean up cached URLs
+ *
+ * Derived from the migrating validator's output type.
  */
-export type Recording = RecordingV7;
+export type Recording = typeof Recording.infer;
 
 // ============================================================================
 // INDEXEDDB STORAGE TYPES

@@ -12,6 +12,7 @@ export type {
 	TransformationStepRun,
 } from './models';
 export {
+	CURRENT_RECORDING_VERSION,
 	generateDefaultTransformation,
 	generateDefaultTransformationStep,
 	TRANSFORMATION_STEP_TYPES,

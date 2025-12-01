@@ -1,36 +1,93 @@
 # Documentation & README Writing Guidelines
 
-## Technical Writing Voice
+## Technical Articles
+
+### Read It Out Loud
+
+The article should flow when spoken. Conversational prose, not terse reference cards.
+
+- Good: "This looks clever. V5 is 'the current type minus the new fields.' But it's fragile."
+- Bad: "Anti-pattern: deriving historical types from current types."
+
+### Keep the Opening Tight
+
+One or two sentences that set the scene and state the problem, then show code. The issue isn't personal intros; it's multiple sentences of buildup before substance.
+
+- Good: "While working on IndexedDB migrations, I ran into a subtle bug: my schema types drifted when the current types changed."
+- Good: "I hit an interesting problem while working on IndexedDB migrations in a local-first app. The schema types for each migration version were derived from the current types..."
+- Bad: "I hit an interesting problem. Let me tell you about the journey. It all started when..."
+
+### Section Titles Should Contain the Insight
+
+Don't just name the section; state what the reader will learn.
+
+- Good: "The Solution: Freeze Historical Types"
+- Bad: "The Solution"
+
+### Structure
+
+1. **Setup** (1-2 sentences): What you were doing and what went wrong
+2. **The Problem**: Show the broken code with brief explanation
+3. **The Solution: [Insight]**: Show the fix with brief explanation
+4. **The Pattern**: Actionable steps (numbered list is fine here)
+5. **The Lesson** (optional): One punchy sentence at the end
+
+### Code Samples
+
+- Show enough to understand the pattern, trim the rest
+- Use `// ...` to indicate omitted boilerplate
+- Comments should highlight what matters: `// Old field name`
+- Banner comments can make patterns scannable:
+  ```typescript
+  // ============================================================================
+  // FROZEN SNAPSHOTS: Do not derive from current types!
+  // ============================================================================
+  ```
+
+### Acknowledge Tradeoffs Directly
+
+Don't hide the cost of your solution. State it, then explain why it's worth it.
+
+- Good: "Yes, this means copying fields across multiple type definitions. That's the point."
+- Bad: Silently hoping readers won't notice the downside
+
+The reader is already thinking about tradeoffs. Beat them to it.
+
+### Build Tension, Then Release
+
+Set up the problem before revealing why it's a problem.
+
+- Good: "This looks clever. V5 is 'the current type minus the new fields.' But it's fragile."
+- Bad: "This anti-pattern causes bugs because..."
+
+The "But" creates a turn. The reader leans in.
+
+### What to Cut
+
+- Bullet lists explaining "why this works" (the solution already shows why)
+- Redundant explanations between code and prose
+- Sections that exist because articles "should have" them
+
+## General Technical Writing
 
 ### Core Principles
 
-- **Start with the problem or decision**: "I was building X and hit this decision" not "When building applications..."
 - **Show the insight first**: Lead with what you realized, then explain why
 - **Use concrete examples**: Show actual code or scenarios, not abstract concepts
-- **Make it conversational**: Write like you're explaining to a colleague at lunch
+- **Make it conversational**: Write like you're explaining to a colleague
 
 ### Sentence Structure
 
 - **Short, punchy observations**: "That's it. No Result types. No error handling dance."
 - **Build rhythm**: Mix short sentences with longer explanations
 - **Use fragments for emphasis**: "Every. Single. Operation."
-- **Ask the reader's unspoken question**: "But why all this complexity for localStorage?"
-
-### Technical Explanations
-
-- **Explain the 'why' before the 'how'**: "localStorage is synchronous. Why am I adding async complexity?"
-- **Call out the obvious**: "Here's the thing that took me too long to realize"
-- **Use comparisons**: "I was treating localStorage like a remote database. But it's not."
-- **End with the lesson**: Not generic advice, but what YOU learned
 
 ### Avoiding Academic/Corporate Tone
 
 - Don't: "This article explores two architectural approaches..."
-- Do: "I hit an interesting architectural decision"
 - Don't: "Let's examine the implications"
-- Do: "Here's what I mean"
 - Don't: "In conclusion, both patterns have merit"
-- Do: "The lesson: Not every data access needs a service"
+- Do: State the lesson directly
 
 ## Authentic Communication Style
 

@@ -10,52 +10,52 @@ import {
 } from '@tauri-apps/plugin-fs';
 import { type } from 'arktype';
 import matter from 'gray-matter';
-import { Ok, tryAsync } from 'wellcrafted/result';
+import { Err, Ok, tryAsync, type Result } from 'wellcrafted/result';
 import { getExtensionFromMimeType } from '$lib/constants/mime';
 import { PATHS } from '$lib/constants/paths';
 import * as services from '$lib/services';
-import type { Recording } from './models';
-import { Transformation, TransformationRun } from './models';
+import { Recording, Transformation, TransformationRun } from './models';
 import type { DbService } from './types';
 import { DbServiceErr } from './types';
 
 /**
- * Schema validator for Recording front matter (everything except transcript)
- */
-const RecordingFrontMatter = type({
-	id: 'string',
-	title: 'string',
-	subtitle: 'string',
-	timestamp: 'string',
-	createdAt: 'string',
-	updatedAt: 'string',
-	transcriptionStatus: '"UNPROCESSED" | "TRANSCRIBING" | "DONE" | "FAILED"',
-});
-
-type RecordingFrontMatter = typeof RecordingFrontMatter.infer;
-
-/**
  * Convert Recording to markdown format (frontmatter + body)
+ *
+ * Storage format:
+ * - Frontmatter: All metadata fields (id, title, subtitle, etc.) but NOT version
+ * - Body: The transcript text
+ *
+ * Version is excluded from frontmatter because desktop files don't need versioning;
+ * they always store transcript in the body (never had transcribedText in frontmatter).
+ * When reading, we use the Recording validator which handles any schema version.
  */
 function recordingToMarkdown(recording: Recording): string {
-	const { transcript, ...frontMatter } = recording;
+	const { transcript, version: _version, ...frontMatter } = recording;
 	return matter.stringify(transcript ?? '', frontMatter);
 }
 
 /**
- * Convert markdown file (YAML frontmatter + body) to Recording
+ * Parse markdown file content into a Recording using the migrating validator.
+ *
+ * Desktop files are treated as V6 schema (no version field stored, body = transcript).
+ * The Recording validator defaults version to 6, then migrates V6 → V7 automatically.
  */
-function markdownToRecording({
-	frontMatter,
-	body,
-}: {
-	frontMatter: RecordingFrontMatter;
-	body: string;
-}): Recording {
-	return {
+function parseMarkdownToRecording(
+	content: string,
+): Result<Recording, { summary: string }> {
+	const { data: frontMatter, content: body } = matter(content);
+
+	// Recording validator accepts V6 or V7 input and always outputs V7
+	const result = Recording({
 		...frontMatter,
-		transcript: body,
-	};
+		transcribedText: body, // V6 schema: body maps to transcribedText, version defaults to 6
+		transcript: body, // V7 schema: body maps to transcript
+	});
+
+	if (result instanceof type.errors) {
+		return Err({ summary: result.summary });
+	}
+	return Ok(result);
 }
 
 /**
@@ -101,17 +101,14 @@ export function createFileSystemDb(): DbService {
 						// Use Rust command to read all markdown files at once
 						const contents = await readMarkdownFiles(recordingsPath);
 
-						// Parse all files
+						// Parse all files using the Recording validator (handles V6→V7 migration)
 						const recordings = contents.map((content) => {
-							const { data, content: body } = matter(content);
-
-							// Validate the front matter schema
-							const frontMatter = RecordingFrontMatter(data);
-							if (frontMatter instanceof type.errors) {
+							const { data, error } = parseMarkdownToRecording(content);
+							if (error) {
+								console.error('Invalid recording:', error.summary);
 								return null; // Skip invalid recording, don't crash the app
 							}
-
-							return markdownToRecording({ frontMatter, body });
+							return data;
 						});
 
 						// Filter out any null entries and sort by timestamp (newest first)
@@ -180,17 +177,15 @@ export function createFileSystemDb(): DbService {
 						if (!fileExists) return null;
 
 						const content = await readTextFile(mdPath);
-						const { data, content: body } = matter(content);
 
-						// Validate the front matter schema
-						const frontMatter = RecordingFrontMatter(data);
-						if (frontMatter instanceof type.errors) {
-							throw new Error(
-								`Invalid recording front matter: ${frontMatter.summary}`,
-							);
+						// Parse using the Recording validator (handles V6→V7 migration)
+						const { data, error } = parseMarkdownToRecording(content);
+						if (error) {
+							const { summary } = error;
+							throw new Error(`Invalid recording: ${summary}`);
 						}
 
-						return markdownToRecording({ frontMatter, body });
+						return data;
 					},
 					catch: (error) =>
 						DbServiceErr({

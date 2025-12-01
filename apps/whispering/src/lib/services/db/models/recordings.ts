@@ -1,3 +1,102 @@
+import { type } from 'arktype';
+
+/**
+ * The current version of the Recording schema.
+ * Increment this when adding new fields or making breaking changes.
+ *
+ * Version history:
+ * - V6: Original schema with 'transcribedText' field (implicit, no version field stored)
+ * - V7: Renamed 'transcribedText' to 'transcript'
+ */
+export const CURRENT_RECORDING_VERSION = 7 as const;
+
+// ============================================================================
+// VERSION 6 (FROZEN)
+// ============================================================================
+
+/**
+ * V6: Original schema with 'transcribedText' field.
+ * Old data has no version field, so we default to 6.
+ *
+ * FROZEN: Do not modify. This represents the historical V6 schema.
+ */
+const RecordingV6 = type({
+	version: '6 = 6',
+	id: 'string',
+	title: 'string',
+	subtitle: 'string',
+	timestamp: 'string',
+	createdAt: 'string',
+	updatedAt: 'string',
+	transcribedText: 'string',
+	transcriptionStatus: '"UNPROCESSED" | "TRANSCRIBING" | "DONE" | "FAILED"',
+});
+
+export type RecordingV6 = typeof RecordingV6.infer;
+
+// ============================================================================
+// VERSION 7 (CURRENT)
+// ============================================================================
+
+/**
+ * V7: Renamed 'transcribedText' to 'transcript'.
+ *
+ * CURRENT VERSION: This is the latest schema.
+ */
+const RecordingV7 = type({
+	version: '7',
+	id: 'string',
+	title: 'string',
+	subtitle: 'string',
+	timestamp: 'string',
+	createdAt: 'string',
+	updatedAt: 'string',
+	transcript: 'string',
+	/**
+	 * Recording lifecycle status:
+	 * 1. Begins in 'UNPROCESSED' state
+	 * 2. Moves to 'TRANSCRIBING' while audio is being transcribed
+	 * 3. Marked as 'DONE' when transcription completes
+	 * 4. Marked as 'FAILED' if transcription fails
+	 */
+	transcriptionStatus: '"UNPROCESSED" | "TRANSCRIBING" | "DONE" | "FAILED"',
+});
+
+export type RecordingV7 = typeof RecordingV7.infer;
+
+// ============================================================================
+// MIGRATING VALIDATOR
+// ============================================================================
+
+/**
+ * Recording validator with automatic migration.
+ *
+ * Input: Raw object with either V6 fields (transcribedText) or V7 fields (transcript).
+ *        If version is missing, defaults to 6.
+ *
+ * Output: Always returns the latest schema (V7) with 'transcript' field.
+ *         V6 inputs are automatically migrated via the .pipe() transformation.
+ *
+ * Usage:
+ * ```ts
+ * const result = Recording({ ...frontMatter, transcribedText: body });
+ * // result is always V7 shape: { version: 7, transcript: string, ... }
+ * ```
+ */
+export const Recording = RecordingV6.or(RecordingV7).pipe(
+	(recording): RecordingV7 => {
+		if (recording.version === 6) {
+			const { transcribedText, version: _version, ...rest } = recording;
+			return {
+				...rest,
+				version: 7,
+				transcript: transcribedText,
+			};
+		}
+		return recording;
+	},
+);
+
 /**
  * Recording intermediate representation.
  *
@@ -14,24 +113,14 @@
  * - `db.recordings.getAudioBlob(id)` to fetch audio as a Blob
  * - `db.recordings.ensureAudioPlaybackUrl(id)` to get a playback URL
  * - `db.recordings.revokeAudioUrl(id)` to clean up cached URLs
+ *
+ * Derived from the migrating validator's output type.
  */
-export type Recording = {
-	id: string;
-	title: string;
-	subtitle: string;
-	timestamp: string;
-	createdAt: string;
-	updatedAt: string;
-	transcript: string;
-	/**
-	 * Recording lifecycle status:
-	 * 1. Begins in 'UNPROCESSED' state
-	 * 2. Moves to 'TRANSCRIBING' while audio is being transcribed
-	 * 3. Marked as 'DONE' when transcription completes
-	 * 4. Marked as 'FAILED' if transcription fails
-	 */
-	transcriptionStatus: 'UNPROCESSED' | 'TRANSCRIBING' | 'DONE' | 'FAILED';
-};
+export type Recording = typeof Recording.infer;
+
+// ============================================================================
+// INDEXEDDB STORAGE TYPES
+// ============================================================================
 
 /**
  * Serialized audio format for IndexedDB storage.
@@ -65,42 +154,94 @@ export type RecordingStoredInIndexedDB = Recording & {
 	serializedAudio: SerializedAudio | undefined;
 };
 
-export type RecordingsDbSchemaV5 = {
-	recordings: RecordingStoredInIndexedDB;
+// ============================================================================
+// DEXIE SCHEMA VERSIONS (for IndexedDB migrations)
+// ============================================================================
+// V6 and V5 derive from their respective arktype validators.
+// V4 and earlier are FROZEN SNAPSHOTS since they predate the versioned validators.
+// ============================================================================
+
+/**
+ * Dexie v0.7 (CURRENT): Recording V7 with 'transcript' field and 'version' field.
+ * Derives from RecordingV7 arktype validator.
+ */
+export type RecordingsDbSchemaV6 = {
+	recordings: RecordingV7 & { serializedAudio: SerializedAudio | undefined };
 };
 
+/**
+ * Dexie v0.5: Recording with 'transcribedText' field.
+ * Derives from RecordingV6 arktype validator.
+ */
+export type RecordingsDbSchemaV5 = {
+	recordings: RecordingV6 & { serializedAudio: SerializedAudio | undefined };
+};
+
+/**
+ * Dexie v0.4: Added createdAt/updatedAt, still uses Blob for audio.
+ * FROZEN: Do not modify.
+ */
 export type RecordingsDbSchemaV4 = {
-	recordings: RecordingsDbSchemaV3['recordings'] & {
-		// V4 added 'createdAt' and 'updatedAt' fields
+	recordings: {
+		id: string;
+		title: string;
+		subtitle: string;
+		timestamp: string;
 		createdAt: string;
 		updatedAt: string;
+		transcribedText: string;
+		transcriptionStatus: 'UNPROCESSED' | 'TRANSCRIBING' | 'DONE' | 'FAILED';
+		blob: Blob | undefined;
 	};
 };
 
+/**
+ * Dexie v0.3: Merged recordingMetadata + recordingBlobs back into recordings.
+ * FROZEN: Do not modify.
+ */
 export type RecordingsDbSchemaV3 = {
-	recordings: RecordingsDbSchemaV1['recordings'];
+	recordings: {
+		id: string;
+		title: string;
+		subtitle: string;
+		timestamp: string;
+		transcribedText: string;
+		transcriptionStatus: 'UNPROCESSED' | 'TRANSCRIBING' | 'DONE' | 'FAILED';
+		blob: Blob | undefined;
+	};
 };
 
+/**
+ * Dexie v0.2: Split recordings into recordingMetadata + recordingBlobs.
+ * FROZEN: Do not modify.
+ */
 export type RecordingsDbSchemaV2 = {
-	recordingMetadata: Omit<RecordingsDbSchemaV1['recordings'], 'blob'>;
-	recordingBlobs: { id: string; blob: Blob | undefined };
+	recordingMetadata: {
+		id: string;
+		title: string;
+		subtitle: string;
+		timestamp: string;
+		transcribedText: string;
+		transcriptionStatus: 'UNPROCESSED' | 'TRANSCRIBING' | 'DONE' | 'FAILED';
+	};
+	recordingBlobs: {
+		id: string;
+		blob: Blob | undefined;
+	};
 };
 
+/**
+ * Dexie v0.1: Original recordings table with Blob storage.
+ * FROZEN: Do not modify.
+ */
 export type RecordingsDbSchemaV1 = {
 	recordings: {
 		id: string;
 		title: string;
 		subtitle: string;
 		timestamp: string;
-		transcript: string;
-		blob: Blob | undefined;
-		/**
-		 * A recording
-		 * 1. Begins in an 'UNPROCESSED' state
-		 * 2. Moves to 'TRANSCRIBING' while the audio is being transcribed
-		 * 3. Finally is marked as 'DONE' when the transcription is complete.
-		 * 4. If the transcription fails, it is marked as 'FAILED'
-		 */
+		transcribedText: string;
 		transcriptionStatus: 'UNPROCESSED' | 'TRANSCRIBING' | 'DONE' | 'FAILED';
+		blob: Blob | undefined;
 	};
 };

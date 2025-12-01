@@ -6,24 +6,26 @@ import { moreDetailsDialog } from '$lib/components/MoreDetailsDialog.svelte';
 import { rpc } from '$lib/query';
 import type { DownloadService } from '$lib/services/download';
 import type { Settings } from '$lib/settings';
-import type {
-	Recording,
-	RecordingsDbSchemaV1,
-	RecordingsDbSchemaV2,
-	RecordingsDbSchemaV3,
-	RecordingsDbSchemaV4,
-	RecordingsDbSchemaV5,
-	SerializedAudio,
-	TransformationRun,
-	TransformationRunCompleted,
-	TransformationRunFailed,
-	TransformationRunRunning,
-	TransformationStepRunCompleted,
-	TransformationStepRunFailed,
-	TransformationStepRunRunning,
-	TransformationStepV2,
-	Transformation,
-	TransformationV1,
+import {
+	CURRENT_RECORDING_VERSION,
+	type Recording,
+	type RecordingsDbSchemaV1,
+	type RecordingsDbSchemaV2,
+	type RecordingsDbSchemaV3,
+	type RecordingsDbSchemaV4,
+	type RecordingsDbSchemaV5,
+	type RecordingsDbSchemaV6,
+	type SerializedAudio,
+	type Transformation,
+	type TransformationRun,
+	type TransformationRunCompleted,
+	type TransformationRunFailed,
+	type TransformationRunRunning,
+	type TransformationStepRunCompleted,
+	type TransformationStepRunFailed,
+	type TransformationStepRunRunning,
+	type TransformationV1,
+	type TransformationV2,
 } from './models';
 import type { DbService } from './types';
 import { DbServiceErr } from './types';
@@ -31,7 +33,7 @@ import { DbServiceErr } from './types';
 const DB_NAME = 'RecordingDB';
 
 class WhisperingDatabase extends Dexie {
-	recordings!: Dexie.Table<RecordingsDbSchemaV5['recordings'], string>;
+	recordings!: Dexie.Table<RecordingsDbSchemaV6['recordings'], string>;
 	transformations!: Dexie.Table<Transformation, string>;
 	transformationRuns!: Dexie.Table<TransformationRun, string>;
 
@@ -236,28 +238,21 @@ class WhisperingDatabase extends Dexie {
 					tx,
 					version: 0.4,
 					upgrade: async (tx) => {
-						const oldRecordings = await tx
-							.table<RecordingsDbSchemaV3['recordings']>('recordings')
-							.toArray();
-
-						const newRecordings = oldRecordings.map(
-							(record) =>
-								({
-									...record,
-									createdAt: record.timestamp,
-									updatedAt: record.timestamp,
-								}) satisfies RecordingsDbSchemaV4['recordings'],
-						);
-
-						await tx.table('recordings').clear();
+						// Use .modify() to add fields in place
 						await tx
-							.table<RecordingsDbSchemaV4['recordings']>('recordings')
-							.bulkAdd(newRecordings);
+							.table<RecordingsDbSchemaV3['recordings']>('recordings')
+							.toCollection()
+							.modify((recording) => {
+								// @ts-expect-error - Adding new field during migration
+								recording.createdAt = recording.timestamp;
+								// @ts-expect-error - Adding new field during migration
+								recording.updatedAt = recording.timestamp;
+							});
 					},
 				});
 			});
 
-		// V5: Save recording blob as ArrayBuffer
+		// V5: Save recording blob as ArrayBuffer (for iOS Safari compatibility)
 		this.version(0.5)
 			.stores({
 				recordings: '&id, timestamp, createdAt, updatedAt',
@@ -269,6 +264,8 @@ class WhisperingDatabase extends Dexie {
 					tx,
 					version: 0.5,
 					upgrade: async (tx) => {
+						// Note: Using clear/bulkAdd here instead of .modify() because the async
+						// blob→ArrayBuffer conversion is complex and this pattern is battle-tested.
 						const oldRecordings = await tx
 							.table<RecordingsDbSchemaV4['recordings']>('recordings')
 							.toArray();
@@ -276,13 +273,13 @@ class WhisperingDatabase extends Dexie {
 						const newRecordings = await Dexie.waitFor(
 							Promise.all(
 								oldRecordings.map(async (record) => {
-									// Convert V4 (Recording with blob) to V5 (RecordingStoredInIndexedDB)
 									const { blob, ...recordWithoutBlob } = record;
 									const serializedAudio = blob
 										? await blobToSerializedAudio(blob)
 										: undefined;
 									return {
 										...recordWithoutBlob,
+										version: 6,
 										serializedAudio,
 									} satisfies RecordingsDbSchemaV5['recordings'];
 								}),
@@ -326,7 +323,7 @@ class WhisperingDatabase extends Dexie {
 							.toArray();
 
 						for (const transformation of transformations) {
-							const updatedSteps: TransformationStepV2[] =
+							const updatedSteps: TransformationV2['steps'] =
 								transformation.steps.map((step) => ({
 									...step,
 									// Explicitly set V2 fields (overwrites any existing values)
@@ -339,6 +336,43 @@ class WhisperingDatabase extends Dexie {
 								.table<Transformation>('transformations')
 								.update(transformation.id, { steps: updatedSteps });
 						}
+					},
+				});
+			});
+
+		// V7: Migrate recordings from V5 schema to V6 schema (Recording V6 → V7)
+		// - Renames 'transcribedText' field to 'transcript'
+		// - Adds 'version' field (set to 7)
+		// This matches the versioned schema in recordings.ts
+		//
+		// Note: Dexie schema versions (0.1-0.7) are separate from Recording schema versions (V6-V7).
+		// - RecordingsDbSchemaV5 (Dexie v0.5): Recording data with 'transcribedText'
+		// - RecordingsDbSchemaV6 (Dexie v0.7): Recording data with 'transcript' and 'version'
+		this.version(0.7)
+			.stores({
+				recordings: '&id, timestamp, createdAt, updatedAt',
+				transformations: '&id, createdAt, updatedAt',
+				transformationRuns: '&id, transformationId, recordingId, startedAt',
+			})
+			.upgrade(async (tx) => {
+				await wrapUpgradeWithErrorHandling({
+					tx,
+					version: 0.7,
+					upgrade: async (tx) => {
+						// Use .modify() to update records in place (safer than clear/bulkAdd)
+						await tx
+							.table<RecordingsDbSchemaV5['recordings']>('recordings')
+							.toCollection()
+							.modify((recording) => {
+								// Rename transcribedText → transcript and add version
+								const transcribedText = recording.transcribedText;
+								// @ts-expect-error - We're migrating the schema, so these fields don't exist yet
+								recording.transcript = transcribedText ?? '';
+								// @ts-expect-error - Adding new field during migration
+								recording.version = 7;
+								// @ts-expect-error - Removing old field during migration
+								delete recording.transcribedText;
+							});
 					},
 				});
 			});

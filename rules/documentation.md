@@ -44,6 +44,24 @@ Don't just name the section; state what the reader will learn.
   // ============================================================================
   ```
 
+### Acknowledge Tradeoffs Directly
+
+Don't hide the cost of your solution. State it, then explain why it's worth it.
+
+- Good: "Yes, this means copying fields across multiple type definitions. That's the point."
+- Bad: Silently hoping readers won't notice the downside
+
+The reader is already thinking about tradeoffs. Beat them to it.
+
+### Build Tension, Then Release
+
+Set up the problem before revealing why it's a problem.
+
+- Good: "This looks clever. V5 is 'the current type minus the new fields.' But it's fragile."
+- Bad: "This anti-pattern causes bugs because..."
+
+The "But" creates a turn. The reader leans in.
+
 ### What to Cut
 
 - Bullet lists explaining "why this works" (the solution already shows why)

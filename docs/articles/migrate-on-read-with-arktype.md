@@ -1,6 +1,6 @@
 # Migrate-on-Read: Schema Versioning with Arktype
 
-In Epicenter, I use an arktype schema validator that validates the data, migrates if needed, and returns the latest version—all in one pass. This is parsing, not just validation.
+In Epicenter, I use an arktype schema validator that validates the data, migrates if needed, and returns the latest version—all in one pass. This does parsing, not just validation (see "parse, don't validate" as a related concept).
 
 ## The Pattern: `.or().pipe()`
 
@@ -8,78 +8,96 @@ Here's a migrating validator from the actual codebase:
 
 ```typescript
 /**
- * TransformationStep validator with automatic migration.
- * Accepts V1 or V2 and always outputs V2.
+ * Recording validator with automatic migration.
+ * Accepts V6 or V7 and always outputs V7.
  */
-export const TransformationStep = TransformationStepV1
-  .or(TransformationStepV2)
-  .pipe((step): TransformationStepV2 => {
-    if (step.version === 1) {
+export const Recording = RecordingV6.or(RecordingV7).pipe(
+  (recording): RecordingV7 => {
+    if (recording.version === 6) {
+      const { transcribedText, version: _version, ...rest } = recording;
       return {
-        ...step,
-        version: 2,
-        'prompt_transform.inference.provider.Custom.model': '',
-        'prompt_transform.inference.provider.Custom.baseUrl': '',
+        ...rest,
+        version: 7,
+        transcript: transcribedText,
       };
     }
-    return step;
-  });
+    return recording;
+  },
+);
 
-export type TransformationStep = typeof TransformationStep.infer;
+export type Recording = typeof Recording.infer;
 ```
 
-That's it. The validator accepts V1 or V2, pipes through a transformation, and always outputs V2. The exported type is the latest version. Consumers never see V1.
+That's it. The validator accepts V6 or V7, pipes through a transformation, and always outputs V7. The exported type is the latest version. Consumers never see V6.
 
 ## Version Discriminators with Defaults
 
 The magic is in how each version is defined:
 
 ```typescript
-// V1: Old data has no version field, so we default to 1
-const TransformationStepV1 = TransformationStepBase.merge({
-  version: '1 = 1',  // If missing, default to 1
+// V6: Old data has no version field, so we default to 6
+const RecordingV6 = type({
+  version: '6 = 6',  // If missing, default to 6
+  id: 'string',
+  transcribedText: 'string',
+  // ... other fields
 });
 
-// V2: New data has an explicit version
-const TransformationStepV2 = TransformationStepBase.merge({
-  version: '2',  // Must be exactly 2
-  'prompt_transform.inference.provider.Custom.model': 'string',
-  'prompt_transform.inference.provider.Custom.baseUrl': 'string',
+// V7: New data has an explicit version
+const RecordingV7 = type({
+  version: '7',  // Must be exactly 7
+  id: 'string',
+  transcript: 'string',  // Renamed from transcribedText
+  // ... other fields
 });
 ```
 
-When you write `version: '1 = 1'`, you're saying: "this field should be 1, and if it's missing, default to 1."
+When you write `version: '6 = 6'`, you're saying: "this field should be 6, and if it's missing, default to 6."
 
-The user's existing data doesn't have a version field yet. The default bridges the gap. New data has `version: 2` explicitly. This gives us a clean discriminator for the union—arktype can tell which variant it's parsing and apply the right schema.
+The user's existing data doesn't have a version field yet. The default bridges the gap. New data has `version: 7` explicitly. This gives us a clean discriminator for the union—arktype can tell which variant it's parsing and apply the right schema.
 
 ## Frozen Types
 
-Each version definition is a complete, self-contained snapshot. You don't derive V1 from V2; you freeze V1 and never touch it again.
+Each version definition is a complete, self-contained snapshot. You don't derive V6 from V7; you freeze V6 and never touch it again.
 
 ```typescript
 // ============================================================================
-// VERSION 1 (FROZEN)
+// VERSION 6 (FROZEN)
 // ============================================================================
 
 /**
- * V1: Original schema without Custom provider fields.
- * FROZEN: Do not modify. This represents the historical V1 schema.
+ * V6: Original schema with 'transcribedText' field.
+ * FROZEN: Do not modify. This represents the historical V6 schema.
  */
-const TransformationStepV1 = TransformationStepBase.merge({
-  version: '1 = 1',
+const RecordingV6 = type({
+  version: '6 = 6',
+  id: 'string',
+  title: 'string',
+  subtitle: 'string',
+  timestamp: 'string',
+  createdAt: 'string',
+  updatedAt: 'string',
+  transcribedText: 'string',
+  transcriptionStatus: '"UNPROCESSED" | "TRANSCRIBING" | "DONE" | "FAILED"',
 });
 
 // ============================================================================
-// VERSION 2 (CURRENT)
+// VERSION 7 (CURRENT)
 // ============================================================================
 
 /**
- * V2: Added Custom provider fields for local LLM endpoints.
+ * V7: Renamed 'transcribedText' to 'transcript'.
  */
-const TransformationStepV2 = TransformationStepBase.merge({
-  version: '2',
-  'prompt_transform.inference.provider.Custom.model': 'string',
-  'prompt_transform.inference.provider.Custom.baseUrl': 'string',
+const RecordingV7 = type({
+  version: '7',
+  id: 'string',
+  title: 'string',
+  subtitle: 'string',
+  timestamp: 'string',
+  createdAt: 'string',
+  updatedAt: 'string',
+  transcript: 'string',
+  transcriptionStatus: '"UNPROCESSED" | "TRANSCRIBING" | "DONE" | "FAILED"',
 });
 ```
 
@@ -102,32 +120,18 @@ So I asked: what if I didn't migrate at all? What if I validated and migrated in
 
 ```typescript
 // Reading and validating data
-const validated = TransformationStep(rawData);
+const validated = Recording(rawData);
 
 if (validated instanceof type.errors) {
   // Handle validation error
   return;
 }
 
-// validated is always the latest version (V2)
+// validated is always the latest version (V7)
 // Old data was migrated in memory during parsing
 ```
 
 The migration happens transparently. When the user edits and saves, the data is written with the new schema. Records migrate lazily as they're accessed.
-
-## Composing Validators
-
-For nested structures, compose the migrating validators:
-
-```typescript
-export const Transformation = TransformationBase.merge({
-  steps: [TransformationStep, '[]'],  // Array of migrating validators
-});
-
-export type Transformation = typeof Transformation.infer;
-```
-
-Each step in the array runs through the migration pipe. The parent doesn't need to know about versioning—it just uses the migrating `TransformationStep` validator, and each step comes out as V2.
 
 ## When This Works
 

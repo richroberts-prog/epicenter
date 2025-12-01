@@ -20,35 +20,44 @@ SHARED BASE FIELDS (frozen for V1/V2):
 │ TransformationBaseFields: id, title, description, timestamps    │
 └─────────────────────────────────────────────────────────────────┘
 
-VERSION 1 (FROZEN):
+STEP VERSION 1 (FROZEN):
 ┌─────────────────────────────────────────────────────────────────┐
 │ TransformationStepV1 = { version: 1, ...BaseFields }            │
-│ TransformationV1 = { ...BaseFields, steps: StepV1[] }           │
 └─────────────────────────────────────────────────────────────────┘
 
-VERSION 2 (CURRENT):
+STEP VERSION 2 (CURRENT):
 ┌─────────────────────────────────────────────────────────────────┐
 │ TransformationStepV2 = { version: 2, ...BaseFields, Custom.* }  │
-│ TransformationV2 = { ...BaseFields, steps: StepV2[] }           │
 └─────────────────────────────────────────────────────────────────┘
 
-MIGRATING VALIDATORS (accept any version, output V2):
+TRANSFORMATION V1 (FROZEN):
 ┌─────────────────────────────────────────────────────────────────┐
-│ TransformationStep = V1.or(V2).pipe() → V2                      │
-│ Transformation = { ...BaseFields, steps: TransformationStep[] } │
+│ TransformationV1 = { ...BaseFields, steps: TransformationStepV1[] }│
+└─────────────────────────────────────────────────────────────────┘
+
+TRANSFORMATION V2 (CURRENT):
+┌─────────────────────────────────────────────────────────────────┐
+│ TransformationV2 = { ...BaseFields, steps: TransformationStepV2[] }│
+└─────────────────────────────────────────────────────────────────┘
+
+MIGRATING TRANSFORMATION VALIDATOR (accepts any version, outputs V2):
+┌─────────────────────────────────────────────────────────────────┐
+│ Transformation = V1.or(V2).pipe() → V2                          │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
 ### Key Types
 
-| Type | Purpose |
-|------|---------|
-| `TransformationStepV1` | FROZEN: Old schema (version defaults to 1, no Custom fields) |
-| `TransformationStepV2` | CURRENT: Latest schema (version=2, has Custom fields) |
-| `TransformationV1` | FROZEN: For typing old data in Dexie migrations |
-| `TransformationV2` | CURRENT: Latest Transformation schema (strict V2 only) |
-| `TransformationStep` | Migrating validator: accepts V1 or V2, outputs V2 |
-| `Transformation` | Migrating validator: accepts V1 or V2 steps, outputs V2 |
+| Type | Purpose | Exported? |
+|------|---------|-----------|
+| `TransformationStepV1` | FROZEN: Old step schema (version defaults to 1, no Custom fields) | No (internal) |
+| `TransformationStepV2` | CURRENT: Latest step schema (version=2, has Custom fields) | No (internal) |
+| `TransformationStep` | Type alias derived from `TransformationV2['steps'][number]` | Yes |
+| `TransformationV1` | FROZEN: Transformation with V1 steps | Yes (type only) |
+| `TransformationV2` | CURRENT: Transformation with V2 steps | Yes (type only) |
+| `Transformation` | Migrating validator: V1.or(V2).pipe() → V2 | Yes |
+
+Note: `TransformationStepV1` and `TransformationStepV2` are internal validators used to compose the `Transformation` migrating validator. They are not exported because external code should use `TransformationStep` (the current step type) or `TransformationV2['steps']` (when typing arrays).
 
 ### Version Field Behavior
 
@@ -66,7 +75,7 @@ MIGRATING VALIDATORS (accept any version, output V2):
 **Mechanism:** Dexie V0.6 upgrade runs once
 
 ```typescript
-// Read with V1 type
+// Read with old type (transformations containing V1 steps)
 const transformations = await tx.table<TransformationV1>('transformations').toArray();
 
 // Migrate steps
@@ -162,27 +171,36 @@ const validated = Transformation(data);  // V1 → V2 via .pipe()
 
 2. **Renamed `TransformationMigrating` to `Transformation`**
 
-   The main `Transformation` validator now accepts V1 or V2 and auto-migrates to V2. When you need the strict V2 type (no migration), use `TransformationV2` directly.
+   The main `Transformation` validator is `TransformationV1.or(TransformationV2).pipe(migrate)`, so transformations with V1 steps are auto-migrated to V2.
 
 3. **Simplified type hierarchy**
 
-   - `TransformationV1`, `TransformationV2`: Strict versioned types
-   - `Transformation`, `TransformationStep`: Migrating validators that accept any version
-   - Use versioned types (`TransformationV2`) when you need strict typing
-   - Use migrating validators (`Transformation`) when reading potentially old data
+   - `TransformationStepV1`, `TransformationStepV2`: Internal validators (not exported)
+   - `TransformationStep`: Type alias derived from `TransformationV2['steps'][number]`
+   - `TransformationV1`: FROZEN transformation with V1 steps (exported type only)
+   - `TransformationV2`: CURRENT transformation with V2 steps (exported type only)
+   - `Transformation`: Migrating validator V1.or(V2).pipe() → V2
+
+4. **Made step types internal**
+
+   The versioned step types (`TransformationStepV1`, `TransformationStepV2`) are now internal to `transformations.ts`. External code uses:
+   - `TransformationStep` for individual step typing
+   - `TransformationV2['steps']` for step array typing (e.g., in Dexie migrations)
 
 ### Design Philosophy
 
 - Shared base fields reduce repetition while keeping versions explicit
-- `Transformation` is the union that auto-migrates; use `TransformationV2` for strict typing
+- Both steps AND transformations have versioned types (V1, V2)
+- Migration happens only at the `Transformation` level (not at step level)
 - Version field is worth the small cost for explicit migration logic
-- When adding V3: extend base if fields are additive, or define from scratch if base changes
+- When adding step V3: extend base if fields are additive, or define from scratch if base changes
+- When adding Transformation V3: create validator and update `Transformation = V1.or(V2).or(V3).pipe()`
 
 ### Implementation Summary
 
 The schema versioning system now works as follows:
 
-1. **IndexedDB (web)**: Dexie V0.6 migration runs once per user, reading old data as `TransformationV1`, adding version=2 and Custom fields, then writing back
+1. **IndexedDB (web)**: Dexie V0.6 migration runs once per user, reading old data as `TransformationV1`, adding version=2 and Custom fields to steps, then writing back
 2. **File system (desktop)**: `Transformation` validator accepts V1 or V2 and outputs V2; old files migrate in memory and persist when user saves
 
 ### Remaining Considerations

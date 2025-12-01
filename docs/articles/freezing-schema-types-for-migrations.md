@@ -111,7 +111,7 @@ export const Recording = RecordingV6.or(RecordingV7).pipe(
 export type Recording = typeof Recording.infer;
 ```
 
-The `.or()` accepts either shape. The `.pipe()` normalizes everything to V7. Your app code only ever sees the latest type.
+The `.or()` accepts either shape. The `.pipe()` normalizes everything to V7. Your app code only ever sees the latest type. (I wrote more about this pattern in [Migrate-on-Read: Schema Versioning with Arktype](./migrate-on-read-with-arktype.md).)
 
 ## The Pattern
 

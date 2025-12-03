@@ -1,8 +1,12 @@
 <script lang="ts">
-	import {  LabeledSlider, LabeledSwitch } from '$lib/components/labeled';
+	import * as Field from '@repo/ui/field';
 	import { Separator } from '@repo/ui/separator';
 	import { Button } from '@repo/ui/button';
-	import { PlayIcon, UploadIcon, XIcon } from '@lucide/svelte';
+	import { Switch } from '@repo/ui/switch';
+	import { Slider } from '@repo/ui/slider';
+	import PlayIcon from '@lucide/svelte/icons/play';
+	import UploadIcon from '@lucide/svelte/icons/upload';
+	import XIcon from '@lucide/svelte/icons/x';
 	import { settings } from '$lib/stores/settings.svelte';
 	import { type WhisperingSoundNames } from '$lib/constants/sounds';
 	import { rpc } from '$lib/query';
@@ -29,20 +33,15 @@
 
 	const applyGlobalVolume = (volume: number) => {
 		const volumeDecimal = volume / 100;
-		const updates: Partial<typeof settings.value> = {};
-
 		soundEvents.forEach(event => {
-			updates[`sound.volume.${event.key}` as keyof typeof settings.value] = volumeDecimal as never;
+			settings.updateKey(`sound.volume.${event.key}` as keyof typeof settings.value, volumeDecimal as never);
 		});
-
-		settings.update(updates);
 	};
 
 	const handleCustomSoundUpload = async (files: File[], soundKey: string) => {
 		const file = files[0];
 		if (!file) return;
 
-		// Validate file
 		if (!file.type.startsWith('audio/')) {
 			rpc.notify.error.execute({
 				title: 'Invalid file type',
@@ -51,7 +50,7 @@
 			return;
 		}
 
-		const maxSize = 5 * 1024 * 1024; // 5MB
+		const maxSize = 5 * 1024 * 1024;
 		if (file.size > maxSize) {
 			rpc.notify.error.execute({
 				title: 'File too large',
@@ -69,28 +68,16 @@
 				uploadedAt: now,
 			};
 
-			// Import db service dynamically to avoid circular dependencies
 			const { db } = await import('$lib/services');
+			const { error } = await db.sounds.save(soundKey as WhisperingSoundNames, file, metadata);
+			if (error) throw error;
 
-			// Save to database
-			const { error } = await db.sounds.save(
-				soundKey as WhisperingSoundNames,
-				file,
-				metadata,
-			);
-			if (error) {
-				throw error;
-			}
+			settings.updateKey(`sound.custom.${soundKey}` as keyof typeof settings.value, true as never);
 
-			// Update settings flag
-			settings.update({ [`sound.custom.${soundKey}`]: true } as Partial<typeof settings.value>);
-
-			// Success notification
 			rpc.notify.success.execute({
 				title: 'Custom sound uploaded',
 				description: `Custom sound for ${soundEvents.find(e => e.key === soundKey)?.label} has been saved.`,
 			});
-
 		} catch (error) {
 			rpc.notify.error.execute({
 				title: 'Upload failed',
@@ -102,24 +89,16 @@
 
 	const removeCustomSound = async (soundKey: string) => {
 		try {
-			// Import db service dynamically to avoid circular dependencies
 			const { db } = await import('$lib/services');
-
-			// Delete from database
 			const { error } = await db.sounds.delete(soundKey as WhisperingSoundNames);
-			if (error) {
-				throw error;
-			}
+			if (error) throw error;
 
-			// Update settings flag
-			settings.update({ [`sound.custom.${soundKey}`]: false } as Partial<typeof settings.value>);
+			settings.updateKey(`sound.custom.${soundKey}` as keyof typeof settings.value, false as never);
 
-			// Success notification
 			rpc.notify.success.execute({
 				title: 'Custom sound removed',
 				description: `Reverted to default sound for ${soundEvents.find(e => e.key === soundKey)?.label}.`,
 			});
-
 		} catch (error) {
 			rpc.notify.error.execute({
 				title: 'Failed to remove custom sound',
@@ -128,7 +107,6 @@
 			});
 		}
 	};
-
 </script>
 
 <svelte:head>
@@ -139,125 +117,132 @@
 	<div>
 		<h3 class="text-lg font-medium">Sound Settings</h3>
 		<p class="text-muted-foreground text-sm">
-			Configure notification sounds and volumes.
+			Configure notification sounds, volumes, and custom sounds.
 		</p>
 	</div>
 
 	<Separator />
 
 	<!-- Global Volume Control -->
-	<div class="space-y-4">
-		<h4 class="text-base font-medium">Global Controls</h4>
-		<div class="flex items-end gap-4">
-			<LabeledSlider
-				id="sound.volume.global"
-				label="Set All Volumes"
-				value={Math.round(settings.value['sound.volume'] * 100)}
-				min={0}
-				max={100}
-				step={5}
-				description="Quickly set the same volume for all notification sounds"
-				onValueChange={(v: number) => {
-					settings.update({ 'sound.volume': v / 100 });
-					applyGlobalVolume(v);
-				}}
-			/>
-			<Button variant="outline" size="sm" onclick={() => testSound('transcriptionComplete')}>
-				<PlayIcon class="mr-2 size-4" />
-				Test
-			</Button>
-		</div>
-	</div>
+	<Field.Set>
+		<Field.Legend>Global Controls</Field.Legend>
+		<Field.Description>Quickly set the same volume for all notification sounds</Field.Description>
+		<Field.Group>
+			<Field.Field>
+				<Field.Label>Set All Volumes</Field.Label>
+				<div class="flex items-center gap-4">
+					<Slider
+						type="single"
+						value={[Math.round(settings.value['sound.volume'] * 100)]}
+						onValueChange={(v) => {
+							const volume = v[0];
+							settings.updateKey('sound.volume', volume / 100);
+							applyGlobalVolume(volume);
+						}}
+						max={100}
+						min={0}
+						step={5}
+						class="flex-1"
+					/>
+					<span class="text-sm font-medium w-12 text-right tabular-nums">
+						{Math.round(settings.value['sound.volume'] * 100)}%
+					</span>
+					<Button variant="outline" size="sm" onclick={() => testSound('transcriptionComplete')}>
+						<PlayIcon class="mr-2 size-4" />
+						Test
+					</Button>
+				</div>
+			</Field.Field>
+		</Field.Group>
+	</Field.Set>
 
 	<Separator />
 
 	<!-- Individual Sound Controls -->
-	<div class="space-y-4">
-		<h4 class="text-base font-medium">Individual Sound Controls</h4>
-		{#each soundEvents as event}
-			<div class="border rounded-lg p-4 space-y-4">
-				<div class="flex items-center justify-between">
-					<div>
-						<h5 class="font-medium">{event.label}</h5>
-						<p class="text-sm text-muted-foreground">{event.description}</p>
-					</div>
-					<div class="flex items-center gap-2">
-						<Button 
-							variant="outline" 
-							size="sm" 
-							onclick={() => testSound(event.key)}
-							disabled={!settings.value[`sound.playOn.${event.key}` as keyof typeof settings.value]}
-						>
-							<PlayIcon class="mr-2 size-4" />
-							Test
-						</Button>
-						<LabeledSwitch
-							id="sound.playOn.{event.key}"
-							label=""
-							checked={settings.value[`sound.playOn.${event.key}` as keyof typeof settings.value] as boolean}
-							onCheckedChange={(v: boolean) => {
-								settings.update({ [`sound.playOn.${event.key}`]: v } as Partial<typeof settings.value>);
-							}}
-						/>
-					</div>
-				</div>
-				
-				<LabeledSlider
-					id="sound.volume.{event.key}"
-					label="Volume"
-					value={Math.round((settings.value[`sound.volume.${event.key}` as keyof typeof settings.value] as number) * 100)}
-					min={0}
-					max={100}
-					step={5}
-					onValueChange={(v: number) => {
-						settings.update({ [`sound.volume.${event.key}`]: v / 100 } as Partial<typeof settings.value>);
-					}}
-				/>
-
-				<!-- Custom Sound Upload Section -->
-				<div class="space-y-2">
-					<h6 class="text-sm font-medium">Custom Sound</h6>
-					{#if settings.value[`sound.custom.${event.key}` as keyof typeof settings.value]}
-						<div class="flex items-center gap-2 p-2 bg-muted rounded">
-							<span class="text-sm flex-1">Custom sound uploaded</span>
-							<Button 
-								variant="outline" 
+	<Field.Set>
+		<Field.Legend>Individual Sound Controls</Field.Legend>
+		<Field.Description>Configure each notification sound individually</Field.Description>
+		<Field.Group>
+			{#each soundEvents as event}
+				<div class="border rounded-lg p-4 space-y-4">
+					<Field.Field orientation="horizontal">
+						<Field.Content>
+							<Field.Title>{event.label}</Field.Title>
+							<Field.Description>{event.description}</Field.Description>
+						</Field.Content>
+						<div class="flex items-center gap-2">
+							<Button
+								variant="outline"
 								size="sm"
-								onclick={() => removeCustomSound(event.key)}
+								onclick={() => testSound(event.key)}
+								disabled={!settings.value[`sound.playOn.${event.key}` as keyof typeof settings.value]}
 							>
-								<XIcon class="mr-1 size-3" />
-								Remove
+								<PlayIcon class="mr-2 size-4" />
+								Test
 							</Button>
+							<Switch
+								id="sound.playOn.{event.key}"
+								bind:checked={
+									() => settings.value[`sound.playOn.${event.key}` as keyof typeof settings.value] as boolean,
+									(v) => settings.updateKey(`sound.playOn.${event.key}` as keyof typeof settings.value, v as never)
+								}
+							/>
 						</div>
-					{:else}
-						<FileDropZone
-							accept={ACCEPT_AUDIO}
-							maxFiles={1}
-							maxFileSize={5 * MEGABYTE}
-							onUpload={(files) => handleCustomSoundUpload(files, event.key)}
-							class="h-20"
-						>
-							<div class="flex flex-col items-center gap-1">
-								<UploadIcon class="size-4 text-muted-foreground" />
-								<span class="text-xs text-muted-foreground">
-									Drop audio file or click to browse
-								</span>
-							</div>
-						</FileDropZone>
-					{/if}
-				</div>
-			</div>
-		{/each}
-	</div>
+					</Field.Field>
 
-	<!-- DEBUG: Reset Database Button -->
-	<!-- <div class="mt-8 p-4 border border-red-200 rounded-lg bg-red-50">
-		<h4 class="text-sm font-medium text-red-800 mb-2">Debug: Database Reset</h4>
-		<p class="text-xs text-red-600 mb-3">
-			This will delete the entire database and recreate it. Use this if custom sounds aren't saving properly.
-		</p>
-		<Button variant="destructive" size="sm" on:click={resetDatabase}>
-			Reset Database
-		</Button>
-	</div> -->
+					<Field.Field>
+						<Field.Label>Volume</Field.Label>
+						<div class="flex items-center gap-4">
+							<Slider
+								type="single"
+								value={[Math.round((settings.value[`sound.volume.${event.key}` as keyof typeof settings.value] as number) * 100)]}
+								onValueChange={(v) => {
+									settings.updateKey(`sound.volume.${event.key}` as keyof typeof settings.value, (v[0] / 100) as never);
+								}}
+								max={100}
+								min={0}
+								step={5}
+								class="flex-1"
+							/>
+							<span class="text-sm font-medium w-12 text-right tabular-nums">
+								{Math.round((settings.value[`sound.volume.${event.key}` as keyof typeof settings.value] as number) * 100)}%
+							</span>
+						</div>
+					</Field.Field>
+
+					<Field.Field>
+						<Field.Label>Custom Sound</Field.Label>
+						{#if settings.value[`sound.custom.${event.key}` as keyof typeof settings.value]}
+							<div class="flex items-center gap-2 p-2 bg-muted rounded">
+								<span class="text-sm flex-1">Custom sound uploaded</span>
+								<Button
+									variant="outline"
+									size="sm"
+									onclick={() => removeCustomSound(event.key)}
+								>
+									<XIcon class="mr-1 size-3" />
+									Remove
+								</Button>
+							</div>
+						{:else}
+							<FileDropZone
+								accept={ACCEPT_AUDIO}
+								maxFiles={1}
+								maxFileSize={5 * MEGABYTE}
+								onUpload={(files) => handleCustomSoundUpload(files, event.key)}
+								class="h-20"
+							>
+								<div class="flex flex-col items-center gap-1">
+									<UploadIcon class="size-4 text-muted-foreground" />
+									<span class="text-xs text-muted-foreground">
+										Drop audio file or click to browse
+									</span>
+								</div>
+							</FileDropZone>
+						{/if}
+					</Field.Field>
+				</div>
+			{/each}
+		</Field.Group>
+	</Field.Set>
 </div>

@@ -1,26 +1,23 @@
 export {
-	BITRATE_VALUES_KBPS,
 	BITRATE_OPTIONS,
+	BITRATES_KBPS,
 	DEFAULT_BITRATE_KBPS,
 } from './bitrate';
-
-export {
-	RECORDING_MODES,
-	RECORDING_MODE_OPTIONS,
-	type RecordingMode,
-} from './recording-modes';
-
-export {
-	recordingStateSchema,
-	recorderStateToIcons,
-	vadStateSchema,
-	vadStateToIcons,
-	type WhisperingRecordingState,
-	type CancelRecordingResult,
-	type VadState,
-} from './recording-states';
-
 export {
 	TIMESLICE_MS,
 	WHISPER_RECOMMENDED_MEDIA_TRACK_CONSTRAINTS,
 } from './media-constraints';
+export {
+	RECORDING_MODE_OPTIONS,
+	RECORDING_MODES,
+	type RecordingMode,
+} from './recording-modes';
+export {
+	type CancelRecordingResult,
+	RECORDER_STATE_TO_ICON,
+	type VadState,
+	VAD_STATE_TO_ICON,
+	VadState,
+	type WhisperingRecordingState,
+	WhisperingRecordingState,
+} from './recording-states';

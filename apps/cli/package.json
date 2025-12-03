@@ -1,5 +1,5 @@
 {
-	"name": "@epicenter/cli",
+	"name": "@epicenter/code",
 	"version": "0.0.5",
 	"description": "Epicenter CLI designed for seamless integration with opencode and epicenter.sh",
 	"type": "module",
@@ -7,10 +7,17 @@
 	"homepage": "https://epicenter.sh",
 	"repository": {
 		"type": "git",
-		"url": "git+https://github.com/epicenter-so/epicenter.git",
+		"url": "git+https://github.com/EpicenterHQ/epicenter.git",
 		"directory": "apps/cli"
 	},
-	"keywords": ["epicenter", "cli", "opencode", "ai", "code", "assistant"],
+	"keywords": [
+		"epicenter",
+		"cli",
+		"opencode",
+		"ai",
+		"code",
+		"assistant"
+	],
 	"publishConfig": {
 		"access": "public"
 	},
@@ -19,15 +26,18 @@
 	},
 	"scripts": {
 		"dev": "infisical run -- bun run src/index.ts",
-		"typecheck": "tsc --noEmit"
+		"check": "tsc --noEmit"
 	},
-	"files": ["src", "README.md", "package.json"],
+	"files": [
+		"src",
+		"README.md",
+		"package.json"
+	],
 	"dependencies": {
 		"@epicenter/opencode": "latest",
 		"arktype": "catalog:",
 		"get-port": "^7.1.0",
 		"wellcrafted": "catalog:",
-		"yargs": "^17.7.2",
-		"zod-openapi": "^5.3.0"
+		"yargs": "catalog:"
 	}
 }

@@ -8,6 +8,7 @@
 	} from '$lib/components/labeled/index.js';
 	import {
 		AnthropicApiKeyInput,
+		CustomEndpointInput,
 		GoogleApiKeyInput,
 		GroqApiKeyInput,
 		OpenAiApiKeyInput,
@@ -19,10 +20,7 @@
 	import * as Card from '@repo/ui/card';
 	import * as SectionHeader from '@repo/ui/section-header';
 	import { Separator } from '@repo/ui/separator';
-	import {
-		TRANSFORMATION_STEP_TYPES,
-		TRANSFORMATION_STEP_TYPES_TO_LABELS,
-	} from '$lib/constants/database';
+	import { TRANSFORMATION_STEP_TYPE_OPTIONS } from '$lib/constants/database';
 	import {
 		ANTHROPIC_INFERENCE_MODEL_OPTIONS,
 		GOOGLE_INFERENCE_MODEL_OPTIONS,
@@ -32,7 +30,9 @@
 	} from '$lib/constants/inference';
 	import type { Transformation } from '$lib/services/db';
 	import { generateDefaultTransformationStep } from '$lib/services/db';
-	import { CopyIcon, PlusIcon, TrashIcon } from '@lucide/svelte';
+	import CopyIcon from '@lucide/svelte/icons/copy';
+	import PlusIcon from '@lucide/svelte/icons/plus';
+	import TrashIcon from '@lucide/svelte/icons/trash';
 	import { slide } from 'svelte/transition';
 
 	let { transformation = $bindable() }: { transformation: Transformation } =
@@ -146,13 +146,7 @@
 											};
 										}
 									}
-									items={TRANSFORMATION_STEP_TYPES.map(
-										(type) =>
-											({
-												value: type,
-												label: TRANSFORMATION_STEP_TYPES_TO_LABELS[type],
-											}) as const,
-									)}
+									items={TRANSFORMATION_STEP_TYPE_OPTIONS}
 									hideLabel
 									class="h-8"
 									placeholder="Select a step type"
@@ -294,7 +288,10 @@
 											label="Model"
 											items={OPENAI_INFERENCE_MODEL_OPTIONS}
 											bind:selected={
-												() => step['prompt_transform.inference.provider.OpenAI.model'],
+												() =>
+													step[
+														'prompt_transform.inference.provider.OpenAI.model'
+													],
 												(value) => {
 													transformation = {
 														...transformation,
@@ -318,7 +315,10 @@
 											label="Model"
 											items={GROQ_INFERENCE_MODEL_OPTIONS}
 											bind:selected={
-												() => step['prompt_transform.inference.provider.Groq.model'],
+												() =>
+													step[
+														'prompt_transform.inference.provider.Groq.model'
+													],
 												(value) => {
 													transformation = {
 														...transformation,
@@ -342,7 +342,10 @@
 											label="Model"
 											items={ANTHROPIC_INFERENCE_MODEL_OPTIONS}
 											bind:selected={
-												() => step['prompt_transform.inference.provider.Anthropic.model'],
+												() =>
+													step[
+														'prompt_transform.inference.provider.Anthropic.model'
+													],
 												(value) => {
 													transformation = {
 														...transformation,
@@ -366,7 +369,10 @@
 											label="Model"
 											items={GOOGLE_INFERENCE_MODEL_OPTIONS}
 											bind:selected={
-												() => step['prompt_transform.inference.provider.Google.model'],
+												() =>
+													step[
+														'prompt_transform.inference.provider.Google.model'
+													],
 												(value) => {
 													transformation = {
 														...transformation,
@@ -388,7 +394,9 @@
 										<LabeledInput
 											id="prompt_transform.inference.provider.OpenRouter.model"
 											label="Model"
-											value={step['prompt_transform.inference.provider.OpenRouter.model']}
+											value={step[
+												'prompt_transform.inference.provider.OpenRouter.model'
+											]}
 											oninput={(e) => {
 												transformation = {
 													...transformation,
@@ -405,6 +413,67 @@
 											}}
 											placeholder="Enter model name"
 										/>
+									{:else if step['prompt_transform.inference.provider'] === 'Custom'}
+										<div class="space-y-4">
+											<LabeledInput
+												id="prompt_transform.inference.provider.Custom.baseUrl"
+												label="API Base URL"
+												value={step[
+													'prompt_transform.inference.provider.Custom.baseUrl'
+												]}
+												oninput={(e) => {
+													transformation = {
+														...transformation,
+														steps: transformation.steps.map((s, i) =>
+															i === index
+																? {
+																		...s,
+																		'prompt_transform.inference.provider.Custom.baseUrl':
+																			e.currentTarget.value,
+																	}
+																: s,
+														),
+													};
+												}}
+												placeholder="http://localhost:11434/v1"
+											>
+												{#snippet description()}
+													<p class="text-muted-foreground text-sm">
+														Overrides the default URL from Settings. Useful when
+														this step needs a different local model server.
+													</p>
+												{/snippet}
+											</LabeledInput>
+											<LabeledInput
+												id="prompt_transform.inference.provider.Custom.model"
+												label="Model"
+												value={step[
+													'prompt_transform.inference.provider.Custom.model'
+												]}
+												oninput={(e) => {
+													transformation = {
+														...transformation,
+														steps: transformation.steps.map((s, i) =>
+															i === index
+																? {
+																		...s,
+																		'prompt_transform.inference.provider.Custom.model':
+																			e.currentTarget.value,
+																	}
+																: s,
+														),
+													};
+												}}
+												placeholder="llama3.2"
+											>
+												{#snippet description()}
+													<p class="text-muted-foreground text-sm">
+														Enter the exact model name as it appears in your local
+														service (e.g., run <code class="bg-muted px-1 rounded">ollama list</code>).
+													</p>
+												{/snippet}
+											</LabeledInput>
+										</div>
 									{/if}
 								</div>
 
@@ -473,6 +542,8 @@
 												<GoogleApiKeyInput />
 											{:else if step['prompt_transform.inference.provider'] === 'OpenRouter'}
 												<OpenRouterApiKeyInput />
+											{:else if step['prompt_transform.inference.provider'] === 'Custom'}
+												<CustomEndpointInput showBaseUrl={false} />
 											{/if}
 										</Accordion.Content>
 									</Accordion.Item>

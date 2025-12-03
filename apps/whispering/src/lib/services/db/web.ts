@@ -7,6 +7,7 @@ import { rpc } from '$lib/query';
 import type { DownloadService } from '$lib/services/download';
 import type { Settings } from '$lib/settings';
 import type {
+	CustomSound,
 	Recording,
 	RecordingsDbSchemaV1,
 	RecordingsDbSchemaV2,
@@ -34,6 +35,7 @@ class WhisperingDatabase extends Dexie {
 	recordings!: Dexie.Table<RecordingsDbSchemaV5['recordings'], string>;
 	transformations!: Dexie.Table<Transformation, string>;
 	transformationRuns!: Dexie.Table<TransformationRun, string>;
+	customSounds!: Dexie.Table<CustomSound, string>;
 
 	constructor({ DownloadService }: { DownloadService: DownloadService }) {
 		super(DB_NAME);
@@ -342,6 +344,14 @@ class WhisperingDatabase extends Dexie {
 					},
 				});
 			});
+
+		// V7: Add customSounds table for custom notification sounds
+		this.version(0.7).stores({
+			recordings: '&id, timestamp, createdAt, updatedAt',
+			transformations: '&id, createdAt, updatedAt',
+			transformationRuns: '&id, transformationId, recordingId, startedAt',
+			customSounds: '&id',
+		});
 	}
 }
 
@@ -1134,5 +1144,88 @@ export function createDbServiceWeb({
 				});
 			},
 		}, // End of runs namespace
+
+		sounds: {
+			async get(soundId) {
+				return tryAsync({
+					try: async () => {
+						const customSound = await db.customSounds.get(soundId);
+						if (!customSound) return null;
+
+						// Convert serialized audio back to Blob
+						return new Blob([customSound.serializedAudio.arrayBuffer], {
+							type: customSound.serializedAudio.blobType,
+						});
+					},
+					catch: (error) =>
+						DbServiceErr({
+							message: 'Error getting custom sound from Dexie',
+							context: { soundId },
+							cause: error,
+						}),
+				});
+			},
+
+			async save(soundId, audio, metadata) {
+				return tryAsync({
+					try: async () => {
+						// Convert Blob to serialized format
+						const arrayBuffer = await audio.arrayBuffer();
+						const serializedAudio = { arrayBuffer, blobType: audio.type };
+
+						const customSound: CustomSound = {
+							id: soundId,
+							serializedAudio,
+							fileName: metadata.fileName,
+							fileSize: metadata.fileSize,
+							uploadedAt: metadata.uploadedAt,
+							updatedAt: new Date().toISOString(),
+						};
+
+						await db.customSounds.put(customSound);
+					},
+					catch: (error) =>
+						DbServiceErr({
+							message: 'Error saving custom sound to Dexie',
+							context: { soundId },
+							cause: error,
+						}),
+				});
+			},
+
+			async delete(soundId) {
+				return tryAsync({
+					try: () => db.customSounds.delete(soundId),
+					catch: (error) =>
+						DbServiceErr({
+							message: 'Error deleting custom sound from Dexie',
+							context: { soundId },
+							cause: error,
+						}),
+				});
+			},
+
+			async getMetadata(soundId) {
+				return tryAsync({
+					try: async () => {
+						const customSound = await db.customSounds.get(soundId);
+						if (!customSound) return null;
+
+						return {
+							fileName: customSound.fileName,
+							fileSize: customSound.fileSize,
+							blobType: customSound.serializedAudio.blobType,
+							uploadedAt: customSound.uploadedAt,
+						};
+					},
+					catch: (error) =>
+						DbServiceErr({
+							message: 'Error getting custom sound metadata from Dexie',
+							context: { soundId },
+							cause: error,
+						}),
+				});
+			},
+		}, // End of sounds namespace
 	};
 }

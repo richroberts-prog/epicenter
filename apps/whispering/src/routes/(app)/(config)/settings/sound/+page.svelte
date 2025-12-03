@@ -30,16 +30,15 @@
 	const applyGlobalVolume = (volume: number) => {
 		const volumeDecimal = volume / 100;
 		const updates: Partial<typeof settings.value> = {};
-		
+
 		soundEvents.forEach(event => {
-			updates[`sound.volume.${event.key}` as keyof typeof settings.value] = volumeDecimal as any;
+			updates[`sound.volume.${event.key}` as keyof typeof settings.value] = volumeDecimal as never;
 		});
-		
-		settings.value = { ...settings.value, ...updates };
+
+		settings.update(updates);
 	};
 
 	const handleCustomSoundUpload = async (files: File[], soundKey: string) => {
-		console.log('🔧 Starting custom sound upload:', { files, soundKey });
 		const file = files[0];
 		if (!file) return;
 
@@ -62,40 +61,30 @@
 		}
 
 		try {
-			console.log('🔧 Converting file to ArrayBuffer...');
-			// Convert to persistent format (same as recordings)
-			const arrayBuffer = await file.arrayBuffer();
 			const now = new Date().toISOString();
-
-			const customSound = {
-				id: soundKey as any, // WhisperingSoundNames
-				serializedAudio: { arrayBuffer, blobType: file.type },
+			const metadata = {
 				fileName: file.name,
 				fileSize: file.size,
+				blobType: file.type,
 				uploadedAt: now,
-				updatedAt: now,
 			};
 
-			console.log('🔧 Importing db service...');
 			// Import db service dynamically to avoid circular dependencies
 			const { db } = await import('$lib/services');
-			
-			console.log('🔧 Saving to IndexedDB...', customSound);
-			// Save to IndexedDB
-			const { error } = await db.saveCustomSound(customSound);
+
+			// Save to database
+			const { error } = await db.sounds.save(
+				soundKey as WhisperingSoundNames,
+				file,
+				metadata,
+			);
 			if (error) {
-				console.error('🔧 IndexedDB save error:', error);
 				throw error;
 			}
 
-			console.log('🔧 Updating settings...');
 			// Update settings flag
-			settings.value = {
-				...settings.value,
-				[`sound.custom.${soundKey}`]: true,
-			};
+			settings.update({ [`sound.custom.${soundKey}`]: true } as Partial<typeof settings.value>);
 
-			console.log('🔧 Custom sound upload successful!');
 			// Success notification
 			rpc.notify.success.execute({
 				title: 'Custom sound uploaded',
@@ -103,7 +92,6 @@
 			});
 
 		} catch (error) {
-			console.error('🔧 Custom sound upload failed:', error);
 			rpc.notify.error.execute({
 				title: 'Upload failed',
 				description: 'Failed to save custom sound. Please try again.',
@@ -116,18 +104,15 @@
 		try {
 			// Import db service dynamically to avoid circular dependencies
 			const { db } = await import('$lib/services');
-			
-			// Delete from IndexedDB
-			const { error } = await db.deleteCustomSound(soundKey as any); // WhisperingSoundNames
+
+			// Delete from database
+			const { error } = await db.sounds.delete(soundKey as WhisperingSoundNames);
 			if (error) {
 				throw error;
 			}
 
 			// Update settings flag
-			settings.value = {
-				...settings.value,
-				[`sound.custom.${soundKey}`]: false,
-			};
+			settings.update({ [`sound.custom.${soundKey}`]: false } as Partial<typeof settings.value>);
 
 			// Success notification
 			rpc.notify.success.execute({
@@ -144,28 +129,6 @@
 		}
 	};
 
-	// DEBUG: Reset database function
-	const resetDatabase = async () => {
-		try {
-			const { db } = await import('$lib/services');
-			const { error } = await db.resetDatabase();
-			if (error) {
-				throw error;
-			}
-			
-			rpc.notify.success.execute({
-				title: 'Database reset',
-				description: 'Database has been reset. Please refresh the page.',
-			});
-		} catch (error) {
-			console.error('Failed to reset database:', error);
-			rpc.notify.error.execute({
-				title: 'Failed to reset database',
-				description: 'Please try again.',
-				action: { type: 'more-details', error },
-			});
-		}
-	};
 </script>
 
 <svelte:head>
@@ -194,8 +157,8 @@
 				max={100}
 				step={5}
 				description="Quickly set the same volume for all notification sounds"
-				onValueChange={(v) => {
-					settings.value = { ...settings.value, 'sound.volume': v / 100 };
+				onValueChange={(v: number) => {
+					settings.update({ 'sound.volume': v / 100 });
 					applyGlobalVolume(v);
 				}}
 			/>
@@ -232,8 +195,8 @@
 							id="sound.playOn.{event.key}"
 							label=""
 							checked={settings.value[`sound.playOn.${event.key}` as keyof typeof settings.value] as boolean}
-							onCheckedChange={(v) => {
-								settings.value = { ...settings.value, [`sound.playOn.${event.key}`]: v };
+							onCheckedChange={(v: boolean) => {
+								settings.update({ [`sound.playOn.${event.key}`]: v } as Partial<typeof settings.value>);
 							}}
 						/>
 					</div>
@@ -246,8 +209,8 @@
 					min={0}
 					max={100}
 					step={5}
-					onValueChange={(v) => {
-						settings.value = { ...settings.value, [`sound.volume.${event.key}`]: v / 100 };
+					onValueChange={(v: number) => {
+						settings.update({ [`sound.volume.${event.key}`]: v / 100 } as Partial<typeof settings.value>);
 					}}
 				/>
 

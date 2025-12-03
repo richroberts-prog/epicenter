@@ -14,13 +14,14 @@
 		id: string;
 		label: string | Snippet;
 		checked: boolean;
+		onCheckedChange?: (checked: boolean) => void;
 		description?: string;
 		disabled?: boolean;
 	} = $props();
 </script>
 
 <div class="flex items-center gap-2">
-	<Switch {id} aria-labelledby={id} bind:checked {disabled} />
+	<Switch {id} aria-labelledby={id} bind:checked {onCheckedChange} {disabled} />
 	<Label for={id}>
 		{#if typeof label === 'string'}
 			{label}

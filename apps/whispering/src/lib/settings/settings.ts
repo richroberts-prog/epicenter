@@ -85,15 +85,45 @@ const deviceIdTransform = (val: string | null): DeviceIdentifier | null =>
  * };
  */
 export const Settings = type({
-	// Sound settings
+	// Sound settings - playOn toggles
 	'sound.playOn.manual-start': 'boolean = true',
 	'sound.playOn.manual-stop': 'boolean = true',
 	'sound.playOn.manual-cancel': 'boolean = true',
+	'sound.playOn.cpal-start': 'boolean = true',
+	'sound.playOn.cpal-stop': 'boolean = true',
+	'sound.playOn.cpal-cancel': 'boolean = true',
 	'sound.playOn.vad-start': 'boolean = true',
 	'sound.playOn.vad-capture': 'boolean = true',
 	'sound.playOn.vad-stop': 'boolean = true',
 	'sound.playOn.transcriptionComplete': 'boolean = true',
 	'sound.playOn.transformationComplete': 'boolean = true',
+
+	// Sound settings - volume (0.0 to 1.0)
+	'sound.volume': 'number = 0.5', // Global volume control
+	'sound.volume.manual-start': 'number = 0.5',
+	'sound.volume.manual-stop': 'number = 0.5',
+	'sound.volume.manual-cancel': 'number = 0.5',
+	'sound.volume.cpal-start': 'number = 0.5',
+	'sound.volume.cpal-stop': 'number = 0.5',
+	'sound.volume.cpal-cancel': 'number = 0.5',
+	'sound.volume.vad-start': 'number = 0.5',
+	'sound.volume.vad-capture': 'number = 0.5',
+	'sound.volume.vad-stop': 'number = 0.5',
+	'sound.volume.transcriptionComplete': 'number = 0.5',
+	'sound.volume.transformationComplete': 'number = 0.5',
+
+	// Sound settings - custom sound flags
+	'sound.custom.manual-start': 'boolean = false',
+	'sound.custom.manual-stop': 'boolean = false',
+	'sound.custom.manual-cancel': 'boolean = false',
+	'sound.custom.cpal-start': 'boolean = false',
+	'sound.custom.cpal-stop': 'boolean = false',
+	'sound.custom.cpal-cancel': 'boolean = false',
+	'sound.custom.vad-start': 'boolean = false',
+	'sound.custom.vad-capture': 'boolean = false',
+	'sound.custom.vad-stop': 'boolean = false',
+	'sound.custom.transcriptionComplete': 'boolean = false',
+	'sound.custom.transformationComplete': 'boolean = false',
 
 	'transcription.copyToClipboardOnSuccess': 'boolean = true',
 	'transcription.writeToCursorOnSuccess': 'boolean = true',

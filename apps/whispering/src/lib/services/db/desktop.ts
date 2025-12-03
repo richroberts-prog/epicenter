@@ -712,5 +712,9 @@ export function createDbServiceDesktop({
 				return fileSystemDb.runs.getCount();
 			},
 		},
+
+		// Custom sounds: No migration needed (new feature)
+		// Just use file system directly
+		sounds: fileSystemDb.sounds,
 	};
 }

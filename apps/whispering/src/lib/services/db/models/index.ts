@@ -33,3 +33,9 @@ export {
 	Transformation,
 	TransformationStep,
 } from './transformations';
+// Custom Sounds
+export type {
+	CustomSound,
+	CustomSoundMetadata,
+	CustomSoundUpload,
+} from './custom-sounds';

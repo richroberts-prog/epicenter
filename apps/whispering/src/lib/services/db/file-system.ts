@@ -1147,6 +1147,127 @@ export function createFileSystemDb(): DbService {
 				});
 			},
 		},
+
+		sounds: {
+			async get(soundId) {
+				return tryAsync({
+					try: async () => {
+						const soundsPath = await PATHS.DB.CUSTOM_SOUNDS();
+
+						// Check if directory exists
+						const dirExists = await exists(soundsPath);
+						if (!dirExists) return null;
+
+						// Find audio file with matching soundId
+						const audioPath = await findAudioFileBySoundId(soundsPath, soundId);
+						if (!audioPath) return null;
+
+						// Read file and convert to Blob
+						const { data: blob, error } =
+							await services.fs.pathToBlob(audioPath);
+						if (error) throw error;
+
+						return blob;
+					},
+					catch: (error) =>
+						DbServiceErr({
+							message: 'Error getting custom sound from file system',
+							context: { soundId },
+							cause: error,
+						}),
+				});
+			},
+
+			async save(soundId, audio, metadata) {
+				return tryAsync({
+					try: async () => {
+						const soundsPath = await PATHS.DB.CUSTOM_SOUNDS();
+
+						// Ensure directory exists
+						await mkdir(soundsPath, { recursive: true });
+
+						// Delete any existing sound files for this soundId
+						const existingAudioPath = await findAudioFileBySoundId(
+							soundsPath,
+							soundId,
+						);
+						if (existingAudioPath) {
+							await remove(existingAudioPath);
+						}
+						const existingMetaPath = await join(soundsPath, `${soundId}.json`);
+						if (await exists(existingMetaPath)) {
+							await remove(existingMetaPath);
+						}
+
+						// 1. Write audio file
+						const extension = mime.getExtension(audio.type) ?? 'bin';
+						const audioPath = await join(
+							soundsPath,
+							`${soundId}.${extension}`,
+						);
+						const arrayBuffer = await audio.arrayBuffer();
+						await writeFile(audioPath, new Uint8Array(arrayBuffer));
+
+						// 2. Write metadata file
+						const metaPath = await join(soundsPath, `${soundId}.json`);
+						const metaContent = JSON.stringify(metadata, null, 2);
+						await writeTextFile(metaPath, metaContent);
+					},
+					catch: (error) =>
+						DbServiceErr({
+							message: 'Error saving custom sound to file system',
+							context: { soundId },
+							cause: error,
+						}),
+				});
+			},
+
+			async delete(soundId) {
+				return tryAsync({
+					try: async () => {
+						const soundsPath = await PATHS.DB.CUSTOM_SOUNDS();
+
+						// Delete audio file
+						const audioPath = await findAudioFileBySoundId(soundsPath, soundId);
+						if (audioPath) {
+							await remove(audioPath);
+						}
+
+						// Delete metadata file
+						const metaPath = await join(soundsPath, `${soundId}.json`);
+						if (await exists(metaPath)) {
+							await remove(metaPath);
+						}
+					},
+					catch: (error) =>
+						DbServiceErr({
+							message: 'Error deleting custom sound from file system',
+							context: { soundId },
+							cause: error,
+						}),
+				});
+			},
+
+			async getMetadata(soundId) {
+				return tryAsync({
+					try: async () => {
+						const soundsPath = await PATHS.DB.CUSTOM_SOUNDS();
+						const metaPath = await join(soundsPath, `${soundId}.json`);
+
+						if (!(await exists(metaPath))) return null;
+
+						const content = await readTextFile(metaPath);
+						return JSON.parse(content);
+					},
+					catch: (error) =>
+						DbServiceErr({
+							message: 'Error getting custom sound metadata from file system',
+							context: { soundId },
+							cause: error,
+						}),
+				});
+			},
+		},
 	};
 }
 
@@ -1163,6 +1284,7 @@ const SUPPORTED_MEDIA_EXTENSIONS = AUDIO_VIDEO_MIME_TYPES.flatMap(
 /**
  * Helper function to find audio file by ID.
  * Checks all supported media extensions from the mime package.
+ * Returns just the filename (e.g., "abc123.mp3")
  */
 async function findAudioFile(dir: string, id: string): Promise<string | null> {
 	for (const ext of SUPPORTED_MEDIA_EXTENSIONS) {
@@ -1170,6 +1292,22 @@ async function findAudioFile(dir: string, id: string): Promise<string | null> {
 		const filePath = await join(dir, filename);
 		const fileExists = await exists(filePath);
 		if (fileExists) return filename;
+	}
+	return null;
+}
+
+/**
+ * Helper function to find audio file by sound ID.
+ * Returns the full path (e.g., "/path/to/custom-sounds/manual-start.mp3")
+ */
+async function findAudioFileBySoundId(
+	dir: string,
+	soundId: string,
+): Promise<string | null> {
+	for (const ext of SUPPORTED_MEDIA_EXTENSIONS) {
+		const filePath = await join(dir, `${soundId}.${ext}`);
+		const fileExists = await exists(filePath);
+		if (fileExists) return filePath;
 	}
 	return null;
 }

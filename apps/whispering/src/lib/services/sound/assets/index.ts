@@ -46,44 +46,33 @@ export const audioElements = {
 	transformationComplete: createAudioElement(defaultSounds.transformationComplete),
 } satisfies Record<WhisperingSoundNames, HTMLAudioElement>;
 
-// Async function to resolve audio source (IndexedDB or default)
+// Async function to resolve audio source (database or default)
 export const resolveAudioSource = async (soundName: WhisperingSoundNames): Promise<string> => {
-	console.log('🔊 Resolving audio source for:', soundName);
-	
 	// Import here to avoid circular dependencies
 	const { settings } = await import('$lib/stores/settings.svelte');
 	const { db } = await import('$lib/services');
-	
-	// Check if custom sound exists in IndexedDB
+
+	// Check if custom sound exists (from settings flag)
 	const hasCustomSound = settings.value[`sound.custom.${soundName}`];
-	console.log('🔊 Has custom sound flag:', hasCustomSound);
-	
+
 	if (hasCustomSound) {
 		try {
-			console.log('🔊 Loading custom sound from IndexedDB...');
-			const { data: customSound, error } = await db.getCustomSound(soundName);
-			console.log('🔊 Custom sound data:', { customSound, error });
-			
-			if (!error && customSound) {
-				// Create temporary blob URL from IndexedDB data (same as recordings)
-				const blob = new Blob([customSound.serializedAudio.arrayBuffer], {
-					type: customSound.serializedAudio.blobType
-				});
-				const tempUrl = URL.createObjectURL(blob);
-				console.log('🔊 Created temporary blob URL:', tempUrl);
-				
+			const { data: customBlob, error } = await db.sounds.get(soundName);
+
+			if (!error && customBlob) {
+				const tempUrl = URL.createObjectURL(customBlob);
+
 				// Schedule cleanup after reasonable time
 				setTimeout(() => URL.revokeObjectURL(tempUrl), 10000);
-				
+
 				return tempUrl;
 			}
 		} catch (error) {
-			console.warn(`🔊 Failed to load custom sound for ${soundName}:`, error);
+			console.warn(`Failed to load custom sound for ${soundName}:`, error);
 		}
 	}
-	
+
 	// Fallback to default sound
-	console.log('🔊 Using default sound:', defaultSounds[soundName]);
 	return defaultSounds[soundName];
 };
 

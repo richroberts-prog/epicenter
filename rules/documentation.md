@@ -10,6 +10,16 @@ When the user provides a voice transcript, tone guidance, or example text to mat
 
 Not every article needs a story arc. Some are just direct statements of practice. Match the user's intent.
 
+## Person and Voice
+
+Articles don't always need to be first person. Choose the voice that fits the content:
+
+- **First person ("I was building...")**: Good for personal experience stories, lessons learned, debugging journeys
+- **Second person ("You're writing...")**: Good for instructional content, pattern explanations, "here's what to do" articles
+- **Direct statements (no pronoun)**: Good for reference documentation, rules, guidelines
+
+When in doubt, second person is often cleaner for technical how-to content. It puts the reader in the driver's seat without the "I realized" narrative framing.
+
 ## Technical Writing Voice
 
 ### Core Principles

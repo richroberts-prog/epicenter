@@ -132,12 +132,23 @@ jobs:
         if: matrix.platform == 'windows-latest'
         shell: pwsh
         run: |
-          $vulkanDll = "$env:VULKAN_SDK\Bin\vulkan-1.dll"
+          Write-Host "VULKAN_SDK: $env:VULKAN_SDK"
+          Write-Host "Searching for vulkan-1.dll..."
+
+          # Find vulkan-1.dll in the SDK directory
+          $vulkanDll = Get-ChildItem -Path $env:VULKAN_SDK -Recurse -Filter "vulkan-1.dll" -ErrorAction SilentlyContinue | Select-Object -First 1
+
+          if (-not $vulkanDll) {
+            Write-Host "ERROR: vulkan-1.dll not found in VULKAN_SDK"
+            Write-Host "Directory contents of VULKAN_SDK:"
+            Get-ChildItem -Path $env:VULKAN_SDK -Recurse -Depth 2 | ForEach-Object { Write-Host $_.FullName }
+            exit 1
+          }
+
+          Write-Host "Found vulkan-1.dll at: $($vulkanDll.FullName)"
           $destination = "apps/whispering/src-tauri/vulkan-1.dll"
-          Write-Host "Copying Vulkan DLL from: $vulkanDll"
-          Write-Host "Copying Vulkan DLL to: $destination"
-          Copy-Item $vulkanDll $destination
-          Write-Host "Vulkan DLL bundled successfully"
+          Copy-Item $vulkanDll.FullName $destination
+          Write-Host "Vulkan DLL bundled successfully to: $destination"
 
       # Setup Node.js for compatibility
       - name: setup node

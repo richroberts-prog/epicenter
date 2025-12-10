@@ -71,15 +71,17 @@
 				'UNPROCESSED',
 				'FAILED',
 			] as const;
-			const transcriptionStatus = statuses[index % statuses.length];
+			// biome-ignore lint/style/noNonNullAssertion: modulo on non-empty array always produces valid index
+			const transcriptionStatus = statuses[index % statuses.length]!;
 
 			// Generate varied transcribed text lengths
 			const textLengths = [
 				'Short recording text.',
 				'This is a medium-length recording with a bit more content to transcribe and process.',
 				`This is a longer recording transcript. It contains multiple sentences and paragraphs of content. ${Array(10).fill('Lorem ipsum dolor sit amet, consectetur adipiscing elit.').join(' ')}`,
-			];
-			const transcribedText = textLengths[index % textLengths.length];
+			] as const;
+			// biome-ignore lint/style/noNonNullAssertion: modulo on non-empty array always produces valid index
+			const transcribedText = textLengths[index % textLengths.length]!;
 
 			const id = nanoid();
 			const now = new Date().toISOString();
@@ -148,7 +150,8 @@
 				},
 			];
 
-			const type = types[index % types.length];
+			// biome-ignore lint/style/noNonNullAssertion: modulo on non-empty array always produces valid index
+			const type = types[index % types.length]!;
 
 			transformation.title = `${type.title} ${index + 1}`;
 			transformation.description = type.description;
@@ -189,9 +192,11 @@
 			transformationIds: string[];
 		}): TransformationRun {
 			// Link to existing recordings and transformations
-			const recordingId = recordingIds[index % recordingIds.length];
+			// biome-ignore lint/style/noNonNullAssertion: modulo on non-empty arrays always produces valid index
+			const recordingId = recordingIds[index % recordingIds.length]!;
+			// biome-ignore lint/style/noNonNullAssertion: modulo on non-empty arrays always produces valid index
 			const transformationId =
-				transformationIds[index % transformationIds.length];
+				transformationIds[index % transformationIds.length]!;
 
 			const id = nanoid();
 			const startedAt = new Date(
@@ -206,7 +211,8 @@
 				'failed',
 				'running',
 			] as const;
-			const status = statuses[index % statuses.length];
+			// biome-ignore lint/style/noNonNullAssertion: modulo on non-empty array always produces valid index
+			const status = statuses[index % statuses.length]!;
 
 			const input = `Input text for transformation run ${index + 1}. This is the snapshot of the recording at the time of transformation.`;
 

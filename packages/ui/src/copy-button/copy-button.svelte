@@ -31,8 +31,10 @@
 	const clipboard = new UseClipboard({ copyFn });
 </script>
 
+<!-- biome-ignore lint/style/useConst: cast to avoid union type complexity with Button props -->
+{@const buttonProps = rest as Record<string, unknown>}
 <Button
-	{...rest}
+	{...buttonProps}
 	bind:ref
 	{variant}
 	{size}

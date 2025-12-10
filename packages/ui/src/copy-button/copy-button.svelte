@@ -29,10 +29,11 @@
 	}
 
 	const clipboard = new UseClipboard({ copyFn });
+
+	// Cast to avoid union type complexity with Button props
+	const buttonProps = rest as Record<string, unknown>;
 </script>
 
-<!-- biome-ignore lint/style/useConst: cast to avoid union type complexity with Button props -->
-{@const buttonProps = rest as Record<string, unknown>}
 <Button
 	{...buttonProps}
 	bind:ref

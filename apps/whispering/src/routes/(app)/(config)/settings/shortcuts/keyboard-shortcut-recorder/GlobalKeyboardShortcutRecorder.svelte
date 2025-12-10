@@ -2,6 +2,7 @@
 	import type { Command } from '$lib/commands';
 	import type { KeyboardEventSupportedKey } from '$lib/constants/keyboard';
 	import { rpc } from '$lib/query';
+	import { WhisperingError } from '$lib/result';
 	import {
 		type Accelerator,
 		pressedKeysToTauriAccelerator,
@@ -99,10 +100,12 @@
 				});
 
 			if (unregisterError) {
-				rpc.notify.error.execute({
-					title: 'Error clearing global shortcut',
-					serviceError: unregisterError,
-				});
+				rpc.notify.error.execute(
+					WhisperingError({
+						title: 'Error clearing global shortcut',
+						serviceError: unregisterError,
+					}),
+				);
 			}
 
 			settings.updateKey(`shortcuts.global.${command.id}`, null);

@@ -1,6 +1,6 @@
 import { nanoid } from 'nanoid/non-secure';
 import { Ok } from 'wellcrafted/result';
-import { WhisperingErr } from '$lib/result';
+import { WhisperingErr, WhisperingError } from '$lib/result';
 import { DbServiceErr } from '$lib/services/db';
 import { settings } from '$lib/stores/settings.svelte';
 import * as transformClipboardWindow from '../../routes/transform-clipboard/transformClipboardWindow.tauri';
@@ -692,10 +692,12 @@ async function processRecordingPipeline({
 	const transformationNoLongerExists = !transformation;
 
 	if (getTransformationError) {
-		notify.error.execute({
-			title: '❌ Failed to get transformation',
-			serviceError: getTransformationError,
-		});
+		notify.error.execute(
+			WhisperingError({
+				title: '❌ Failed to get transformation',
+				serviceError: getTransformationError,
+			}),
+		);
 		return;
 	}
 

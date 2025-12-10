@@ -58,7 +58,7 @@ function normalizeInput(args: WhisperingErrorInput): Omit<WhisperingError, 'name
  * WhisperingErr({ title: 'Error', serviceError: taggedError });
  * ```
  */
-const WhisperingError = (args: WhisperingErrorInput): WhisperingError => ({
+export const WhisperingError = (args: WhisperingErrorInput): WhisperingError => ({
 	name: 'WhisperingError',
 	severity: 'error',
 	...normalizeInput(args),

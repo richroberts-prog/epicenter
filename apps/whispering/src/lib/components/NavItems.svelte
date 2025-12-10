@@ -31,25 +31,32 @@
 			(import.meta.env.DEV || migrationDialog.hasIndexedDBData),
 	);
 
+	/**
+	 * Navigation items for the top nav bar.
+	 * - exactMatch: true = only highlights when URL matches exactly
+	 * - exactMatch: false = highlights when URL matches or starts with href (for sub-page support)
+	 */
 	const navItems = [
 		{
 			label: 'Recordings',
 			icon: ListIcon,
 			type: 'anchor',
 			href: '/recordings',
+			exactMatch: false,
 		},
 		{
 			label: 'Transformations',
 			icon: LayersIcon,
 			type: 'anchor',
 			href: '/transformations',
+			exactMatch: false,
 		},
 		{
 			label: 'Settings',
 			icon: SettingsIcon,
 			type: 'anchor',
 			href: '/settings',
-			activePathPrefix: '/settings',
+			exactMatch: false,
 		},
 		{
 			label: 'View project on GitHub',
@@ -85,7 +92,7 @@
 		type: 'anchor';
 		href: string;
 		external?: boolean;
-		activePathPrefix?: string;
+		exactMatch?: boolean;
 	};
 
 	type ButtonItem = BaseNavItem & {
@@ -100,12 +107,12 @@
 
 	type NavItem = AnchorItem | ButtonItem | ThemeItem;
 
+	/** Determines if a nav item should be highlighted based on current route */
 	const isItemActive = (item: AnchorItem) => {
 		if (item.external) return false;
-		if (item.activePathPrefix) {
-			return page.url.pathname.startsWith(item.activePathPrefix);
-		}
-		return page.url.pathname === item.href;
+		const pathname = page.url.pathname;
+		if (item.exactMatch) return pathname === item.href;
+		return pathname === item.href || pathname.startsWith(`${item.href}/`);
 	};
 </script>
 

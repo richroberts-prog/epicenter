@@ -26,18 +26,37 @@
 
 	const sidebar = useSidebar();
 
-	// Navigation items
+	/**
+	 * Navigation items for the sidebar.
+	 * - exactMatch: true = only highlights when URL matches exactly (needed for "/" to avoid matching all routes)
+	 * - exactMatch: false = highlights when URL matches or starts with href (for sub-page support)
+	 */
 	const navItems = [
-		{ label: 'Home', href: '/', icon: HomeIcon, exact: true },
-		{ label: 'Recordings', href: '/recordings', icon: ListIcon },
-		{ label: 'Transformations', href: '/transformations', icon: LayersIcon },
-		{ label: 'Settings', href: '/settings', icon: SettingsIcon },
+		{ label: 'Home', href: '/', icon: HomeIcon, exactMatch: true },
+		{
+			label: 'Recordings',
+			href: '/recordings',
+			icon: ListIcon,
+			exactMatch: false,
+		},
+		{
+			label: 'Transformations',
+			href: '/transformations',
+			icon: LayersIcon,
+			exactMatch: false,
+		},
+		{
+			label: 'Settings',
+			href: '/settings',
+			icon: SettingsIcon,
+			exactMatch: false,
+		},
 	] as const;
 
-	// Check if route is active - uses safer matching that prevents /recordings from matching /recordingsXYZ
-	const isActive = (href: string, exact = false) => {
+	/** Determines if a nav item should be highlighted based on current route */
+	const isActive = (href: string, exactMatch: boolean) => {
 		const pathname = page.url.pathname;
-		if (exact) return pathname === href;
+		if (exactMatch) return pathname === href;
 		return pathname === href || pathname.startsWith(`${href}/`);
 	};
 </script>
@@ -77,7 +96,7 @@
 			<Sidebar.GroupContent>
 				<Sidebar.Menu>
 					{#each navItems as item}
-						{@const active = isActive(item.href, item.exact ?? false)}
+						{@const active = isActive(item.href, item.exactMatch)}
 						<Sidebar.MenuItem>
 							<Sidebar.MenuButton isActive={active}>
 								{#snippet child({ props })}

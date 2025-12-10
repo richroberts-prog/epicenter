@@ -26,7 +26,7 @@
 		INFERENCE_PROVIDER_OPTIONS,
 		OPENAI_INFERENCE_MODEL_OPTIONS,
 	} from '$lib/constants/inference';
-	import type { Transformation } from '$lib/services/db';
+	import type { Transformation, TransformationStep } from '$lib/services/db';
 	import { generateDefaultTransformationStep } from '$lib/services/db';
 	import CopyIcon from '@lucide/svelte/icons/copy';
 	import PlusIcon from '@lucide/svelte/icons/plus';
@@ -66,7 +66,11 @@
 
 	function duplicateStep(index: number) {
 		const stepToDuplicate = transformation.steps[index];
-		const duplicatedStep = { ...stepToDuplicate, id: crypto.randomUUID() };
+		if (!stepToDuplicate) return;
+		const duplicatedStep = {
+			...stepToDuplicate,
+			id: crypto.randomUUID(),
+		} satisfies TransformationStep;
 		transformation = {
 			...transformation,
 			steps: [

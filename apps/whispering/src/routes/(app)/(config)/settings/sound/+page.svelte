@@ -1,8 +1,10 @@
 <script lang="ts">
 	import * as Field from '@epicenter/ui/field';
+	import * as Item from '@epicenter/ui/item';
 	import { Button } from '@epicenter/ui/button';
 	import { Switch } from '@epicenter/ui/switch';
 	import { Slider } from '@epicenter/ui/slider';
+	import CheckCircle2Icon from '@lucide/svelte/icons/check-circle-2';
 	import PlayIcon from '@lucide/svelte/icons/play';
 	import UploadIcon from '@lucide/svelte/icons/upload';
 	import XIcon from '@lucide/svelte/icons/x';
@@ -207,32 +209,47 @@
 					<Field.Field>
 						<Field.Label>Custom Sound</Field.Label>
 						{#if settings.value[`sound.custom.${soundEvent.key}`]}
-							<div class="flex items-center gap-2 p-2 bg-muted rounded">
-								<span class="text-sm flex-1">Custom sound uploaded</span>
-								<Button
-									variant="outline"
-									size="sm"
-									onclick={async () => {
-										const { error } = await services.db.sounds.delete(soundEvent.key);
-										if (error) {
-											rpc.notify.error.execute({
-												title: 'Failed to remove custom sound',
-												description: 'Please try again.',
-												action: { type: 'more-details', error },
+							<Item.Root variant="muted" size="sm">
+								<Item.Media variant="icon">
+									<CheckCircle2Icon />
+								</Item.Media>
+								<Item.Content>
+									<Item.Title>Custom sound active</Item.Title>
+									<Item.Description>
+										Your custom notification sound is active
+									</Item.Description>
+								</Item.Content>
+								<Item.Actions>
+									<Button
+										variant="outline"
+										size="sm"
+										onclick={async () => {
+											const { error } = await services.db.sounds.delete(
+												soundEvent.key,
+											);
+											if (error) {
+												rpc.notify.error.execute({
+													title: 'Failed to remove custom sound',
+													description: 'Please try again.',
+													action: { type: 'more-details', error },
+												});
+												return;
+											}
+											settings.updateKey(
+												`sound.custom.${soundEvent.key}`,
+												false,
+											);
+											rpc.notify.success.execute({
+												title: 'Custom sound removed',
+												description: `Reverted to default sound for ${soundEvent.label}.`,
 											});
-											return;
-										}
-										settings.updateKey(`sound.custom.${soundEvent.key}`, false);
-										rpc.notify.success.execute({
-											title: 'Custom sound removed',
-											description: `Reverted to default sound for ${soundEvent.label}.`,
-										});
-									}}
-								>
-									<XIcon class="mr-1 size-3" />
-									Remove
-								</Button>
-							</div>
+										}}
+									>
+										<XIcon class="mr-1 size-3" />
+										Remove
+									</Button>
+								</Item.Actions>
+							</Item.Root>
 						{:else}
 							<FileDropZone
 								accept={ACCEPT_AUDIO}
@@ -248,7 +265,10 @@
 									const file = files[0];
 									if (!file) return;
 
-									const { error } = await services.db.sounds.save(soundEvent.key, file);
+									const { error } = await services.db.sounds.save(
+										soundEvent.key,
+										file,
+									);
 									if (error) {
 										rpc.notify.error.execute({
 											title: 'Upload failed',

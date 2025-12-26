@@ -88,20 +88,7 @@
 	<title>Sound Settings - Whispering</title>
 </svelte:head>
 
-<div class="space-y-6">
-	<div class="flex items-start justify-between">
-		<div>
-			<h3 class="text-lg font-medium">Sound Settings</h3>
-			<p class="text-muted-foreground text-sm">
-				Configure notification sounds, volumes, and custom sounds.
-			</p>
-		</div>
-		<OpenFolderButton
-			getFolderPath={PATHS.DB.CUSTOM_SOUNDS}
-			tooltipText="Open custom sounds folder"
-		/>
-	</div>
-
+<Field.Group>
 	<!-- Global Volume Control -->
 	<Field.Set>
 		<Field.Legend>Global Controls</Field.Legend>
@@ -153,13 +140,21 @@
 			</Field.Field>
 		</Field.Group>
 	</Field.Set>
-
+	<Field.Separator />
 	<!-- Individual Sound Controls -->
 	<Field.Set>
-		<Field.Legend>Individual Sound Controls</Field.Legend>
-		<Field.Description
-			>Configure each notification sound individually</Field.Description
-		>
+		<div class="flex items-start justify-between">
+			<div class="space-y-1">
+				<Field.Legend>Individual Sound Controls</Field.Legend>
+				<Field.Description
+					>Configure each notification sound individually</Field.Description
+				>
+			</div>
+			<OpenFolderButton
+				getFolderPath={PATHS.DB.CUSTOM_SOUNDS}
+				tooltipText="Open custom sounds folder"
+			/>
+		</div>
 		<Field.Group>
 			{#each SOUND_EVENTS as soundEvent}
 				<div class="border rounded-lg p-4 space-y-4">
@@ -314,4 +309,4 @@
 			{/each}
 		</Field.Group>
 	</Field.Set>
-</div>
+</Field.Group>

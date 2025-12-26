@@ -10,8 +10,6 @@ export type PlaySoundServiceError = ReturnType<typeof PlaySoundServiceError>;
 export type PlaySoundOptions = {
 	/** Volume level from 0.0 to 1.0 */
 	volume: number;
-	/** Whether this sound uses a custom audio file from IndexedDB */
-	hasCustomSound: boolean;
 };
 
 export type PlaySoundService = {

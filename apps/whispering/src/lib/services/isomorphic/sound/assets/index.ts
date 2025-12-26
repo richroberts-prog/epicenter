@@ -1,4 +1,9 @@
-import type { WhisperingSoundNames } from '$lib/constants/sounds';
+import {
+	BUILTIN_SOUND_NAMES,
+	type BuiltinSoundName,
+	type WhisperingSoundNames,
+} from '$lib/constants/sounds';
+import { DbServiceLive } from '../../db';
 import buttonBlipSrc from './sound_ex_machina_Button_Blip.mp3';
 import alarmButtonPressSrc from './zapsplat_household_alarm_clock_button_press_12967.mp3';
 import snoozeButtonPress1Src from './zapsplat_household_alarm_clock_large_snooze_button_press_001_12968.mp3';
@@ -7,8 +12,8 @@ import shortClickSrc from './zapsplat_multimedia_click_button_short_sharp_73510.
 import alertChimeSrc from './zapsplat_multimedia_notification_alert_ping_bright_chime_001_93276.mp3';
 import bellSynthSrc from './zapsplat_multimedia_ui_notification_classic_bell_synth_success_107505.mp3';
 
-/** Default bundled sound sources for each sound event */
-export const DEFAULT_SOUNDS = {
+/** Default bundled sound sources for built-in sound events */
+const DEFAULT_SOUNDS: Record<BuiltinSoundName, string> = {
 	'manual-start': alarmButtonPressSrc,
 	'manual-cancel': shortClickSrc,
 	'manual-stop': buttonBlipSrc,
@@ -20,7 +25,10 @@ export const DEFAULT_SOUNDS = {
 	'vad-stop': snoozeButtonPress1Src,
 	transcriptionComplete: bellSynthSrc,
 	transformationComplete: alertChimeSrc,
-} as const satisfies Record<WhisperingSoundNames, string>;
+};
+
+/** Set of built-in sound names for quick lookup */
+const BUILTIN_SOUND_SET = new Set<string>(BUILTIN_SOUND_NAMES);
 
 /** Cached audio elements for lazy initialization */
 const audioCache = new Map<WhisperingSoundNames, HTMLAudioElement>();
@@ -29,43 +37,52 @@ const audioCache = new Map<WhisperingSoundNames, HTMLAudioElement>();
 const activeBlobUrls = new Map<WhisperingSoundNames, string>();
 
 /**
+ * Checks if a sound name is a built-in sound with a default audio file.
+ */
+function isBuiltinSound(soundName: string): soundName is BuiltinSoundName {
+	return BUILTIN_SOUND_SET.has(soundName);
+}
+
+/**
  * Gets or creates a cached audio element for a sound.
  * Uses lazy initialization - audio elements are only created when first needed.
  */
-export function getOrCreateAudioElement(
+function getOrCreateAudioElement(
 	soundName: WhisperingSoundNames,
+	initialSrc?: string,
 ): HTMLAudioElement {
 	const cached = audioCache.get(soundName);
 	if (cached) return cached;
 
-	const audio = new Audio(DEFAULT_SOUNDS[soundName]);
+	const src =
+		initialSrc ?? (isBuiltinSound(soundName) ? DEFAULT_SOUNDS[soundName] : '');
+	const audio = new Audio(src);
 	audio.preload = 'auto';
 	audioCache.set(soundName, audio);
 	return audio;
 }
 
 /**
- * Resolves the audio source for a sound, checking for custom sounds first.
- * If hasCustomSound is true, attempts to load from IndexedDB.
- * Otherwise, returns the default bundled sound.
+ * Resolves the audio source for a sound.
+ * For built-in sounds, returns the default bundled file.
+ * For custom sounds, loads from IndexedDB.
  */
-export async function resolveAudioSource(
+async function resolveAudioSource(
 	soundName: WhisperingSoundNames,
-	hasCustomSound: boolean,
-): Promise<string> {
-	if (!hasCustomSound) {
+): Promise<string | null> {
+	// Built-in sounds use default bundled files
+	if (isBuiltinSound(soundName)) {
 		return DEFAULT_SOUNDS[soundName];
 	}
 
-	// Import here to avoid circular dependencies
-	const { services } = await import('$lib/services');
-	const { data: customBlob, error } = await services.db.sounds.get(soundName);
+	// Custom sounds are loaded from IndexedDB
+	const { data: customBlob, error } = await DbServiceLive.sounds.get(soundName);
 
 	if (error || !customBlob) {
 		if (error) {
 			console.warn(`Failed to load custom sound for ${soundName}:`, error);
 		}
-		return DEFAULT_SOUNDS[soundName];
+		return null;
 	}
 
 	// Clean up previous blob URL for this sound if it exists
@@ -81,15 +98,21 @@ export async function resolveAudioSource(
 }
 
 /**
- * Updates the audio element source if needed and prepares it for playback.
- * Handles both custom sounds (from IndexedDB) and default bundled sounds.
+ * Prepares an audio element for playback.
+ * For built-in sounds, uses bundled audio files.
+ * For custom sounds, loads from IndexedDB.
+ * Returns null if the sound cannot be resolved (e.g., custom sound not found).
  */
 export async function prepareAudioForPlayback(
 	soundName: WhisperingSoundNames,
-	hasCustomSound: boolean,
-): Promise<HTMLAudioElement> {
-	const audio = getOrCreateAudioElement(soundName);
-	const newSrc = await resolveAudioSource(soundName, hasCustomSound);
+): Promise<HTMLAudioElement | null> {
+	const newSrc = await resolveAudioSource(soundName);
+
+	if (!newSrc) {
+		return null;
+	}
+
+	const audio = getOrCreateAudioElement(soundName, newSrc);
 
 	// Only reload if the source has changed
 	if (audio.src !== newSrc) {

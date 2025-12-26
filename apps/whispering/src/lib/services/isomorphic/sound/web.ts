@@ -4,13 +4,18 @@ import { prepareAudioForPlayback } from './assets';
 
 export function createPlaySoundServiceWeb(): PlaySoundService {
 	return {
-		playSound: async (soundName, { volume, hasCustomSound }) => {
+		playSound: async (soundName, { volume }) => {
 			// Skip playing if the tab is not visible (browser autoplay restrictions)
 			if (document.hidden) {
 				return Ok(undefined);
 			}
 
-			const audio = await prepareAudioForPlayback(soundName, hasCustomSound);
+			const audio = await prepareAudioForPlayback(soundName);
+			if (!audio) {
+				// Sound not found (custom sound not in IndexedDB)
+				return Ok(undefined);
+			}
+
 			audio.volume = volume;
 			await audio.play();
 

@@ -6,10 +6,14 @@ import { PlaySoundServiceErr } from './types';
 
 export function createPlaySoundServiceDesktop(): PlaySoundService {
 	return {
-		playSound: async (soundName, { volume, hasCustomSound }) =>
+		playSound: async (soundName, { volume }) =>
 			tryAsync({
 				try: async () => {
-					const audio = await prepareAudioForPlayback(soundName, hasCustomSound);
+					const audio = await prepareAudioForPlayback(soundName);
+					if (!audio) {
+						// Sound not found (custom sound not in IndexedDB) - silently skip
+						return;
+					}
 					audio.volume = volume;
 					await audio.play();
 				},

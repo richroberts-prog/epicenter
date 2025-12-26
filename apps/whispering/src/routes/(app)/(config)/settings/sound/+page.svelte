@@ -10,10 +10,14 @@
 	import { settings } from '$lib/stores/settings.svelte';
 	import { type WhisperingSoundNames } from '$lib/constants/sounds';
 	import { rpc } from '$lib/query';
-	import { FileDropZone, ACCEPT_AUDIO, MEGABYTE } from '@repo/ui/file-drop-zone';
+	import { db } from '$lib/services';
+	import {
+		FileDropZone,
+		ACCEPT_AUDIO,
+		MEGABYTE,
+	} from '@repo/ui/file-drop-zone';
 
-	// Sound events configuration
-	const soundEvents = [
+	const SOUND_EVENTS = [
 		{ key: 'manual-start', label: 'Manual Recording Start', description: 'When you start recording manually' },
 		{ key: 'manual-stop', label: 'Manual Recording Stop', description: 'When you stop recording manually' },
 		{ key: 'manual-cancel', label: 'Manual Recording Cancel', description: 'When you cancel recording manually' },
@@ -25,88 +29,11 @@
 		{ key: 'vad-stop', label: 'VAD Session Stop', description: 'When voice activity detection session ends' },
 		{ key: 'transcriptionComplete', label: 'Transcription Complete', description: 'When audio transcription finishes' },
 		{ key: 'transformationComplete', label: 'Transformation Complete', description: 'When text transformation finishes' },
-	] as const;
-
-	const testSound = (soundKey: string) => {
-		rpc.sound.playSoundIfEnabled.execute(soundKey as WhisperingSoundNames);
-	};
-
-	const applyGlobalVolume = (volume: number) => {
-		const volumeDecimal = volume / 100;
-		soundEvents.forEach(event => {
-			settings.updateKey(`sound.volume.${event.key}` as keyof typeof settings.value, volumeDecimal as never);
-		});
-	};
-
-	const handleCustomSoundUpload = async (files: File[], soundKey: string) => {
-		const file = files[0];
-		if (!file) return;
-
-		if (!file.type.startsWith('audio/')) {
-			rpc.notify.error.execute({
-				title: 'Invalid file type',
-				description: 'Please upload an audio file (MP3, WAV, OGG, etc.)',
-			});
-			return;
-		}
-
-		const maxSize = 5 * 1024 * 1024;
-		if (file.size > maxSize) {
-			rpc.notify.error.execute({
-				title: 'File too large',
-				description: 'File size must be less than 5MB',
-			});
-			return;
-		}
-
-		try {
-			const now = new Date().toISOString();
-			const metadata = {
-				fileName: file.name,
-				fileSize: file.size,
-				blobType: file.type,
-				uploadedAt: now,
-			};
-
-			const { db } = await import('$lib/services');
-			const { error } = await db.sounds.save(soundKey as WhisperingSoundNames, file, metadata);
-			if (error) throw error;
-
-			settings.updateKey(`sound.custom.${soundKey}` as keyof typeof settings.value, true as never);
-
-			rpc.notify.success.execute({
-				title: 'Custom sound uploaded',
-				description: `Custom sound for ${soundEvents.find(e => e.key === soundKey)?.label} has been saved.`,
-			});
-		} catch (error) {
-			rpc.notify.error.execute({
-				title: 'Upload failed',
-				description: 'Failed to save custom sound. Please try again.',
-				action: { type: 'more-details', error },
-			});
-		}
-	};
-
-	const removeCustomSound = async (soundKey: string) => {
-		try {
-			const { db } = await import('$lib/services');
-			const { error } = await db.sounds.delete(soundKey as WhisperingSoundNames);
-			if (error) throw error;
-
-			settings.updateKey(`sound.custom.${soundKey}` as keyof typeof settings.value, false as never);
-
-			rpc.notify.success.execute({
-				title: 'Custom sound removed',
-				description: `Reverted to default sound for ${soundEvents.find(e => e.key === soundKey)?.label}.`,
-			});
-		} catch (error) {
-			rpc.notify.error.execute({
-				title: 'Failed to remove custom sound',
-				description: 'Please try again.',
-				action: { type: 'more-details', error },
-			});
-		}
-	};
+	] as const satisfies {
+		key: WhisperingSoundNames;
+		label: string;
+		description: string;
+	}[];
 </script>
 
 <svelte:head>
@@ -126,28 +53,47 @@
 	<!-- Global Volume Control -->
 	<Field.Set>
 		<Field.Legend>Global Controls</Field.Legend>
-		<Field.Description>Quickly set the same volume for all notification sounds</Field.Description>
+		<Field.Description
+			>Quickly set the same volume for all notification sounds</Field.Description
+		>
 		<Field.Group>
 			<Field.Field>
 				<Field.Label>Set All Volumes</Field.Label>
+				<Field.Description>
+					Current volume: <span class="font-medium tabular-nums"
+						>{Math.round(settings.value['sound.volume'] * 100)}%</span
+					>
+				</Field.Description>
 				<div class="flex items-center gap-4">
 					<Slider
 						type="single"
-						value={[Math.round(settings.value['sound.volume'] * 100)]}
-						onValueChange={(v) => {
-							const volume = v[0];
-							settings.updateKey('sound.volume', volume / 100);
-							applyGlobalVolume(volume);
-						}}
+						bind:value={
+							() => Math.round(settings.value['sound.volume'] * 100),
+							(v) => {
+								const volumeDecimal = v / 100;
+								settings.update({
+									'sound.volume': volumeDecimal,
+									...Object.fromEntries(
+										SOUND_EVENTS.map(({ key }) => [
+											`sound.volume.${key}`,
+											volumeDecimal,
+										]),
+									),
+								});
+							}
+						}
 						max={100}
 						min={0}
 						step={5}
 						class="flex-1"
+						aria-label="Global volume"
 					/>
-					<span class="text-sm font-medium w-12 text-right tabular-nums">
-						{Math.round(settings.value['sound.volume'] * 100)}%
-					</span>
-					<Button variant="outline" size="sm" onclick={() => testSound('transcriptionComplete')}>
+					<Button
+						variant="outline"
+						size="sm"
+						onclick={() =>
+							rpc.sound.playSoundIfEnabled.execute('transcriptionComplete')}
+					>
 						<PlayIcon class="mr-2 size-4" />
 						Test
 					</Button>
@@ -161,30 +107,33 @@
 	<!-- Individual Sound Controls -->
 	<Field.Set>
 		<Field.Legend>Individual Sound Controls</Field.Legend>
-		<Field.Description>Configure each notification sound individually</Field.Description>
+		<Field.Description
+			>Configure each notification sound individually</Field.Description
+		>
 		<Field.Group>
-			{#each soundEvents as event}
+			{#each SOUND_EVENTS as soundEvent}
 				<div class="border rounded-lg p-4 space-y-4">
 					<Field.Field orientation="horizontal">
 						<Field.Content>
-							<Field.Title>{event.label}</Field.Title>
-							<Field.Description>{event.description}</Field.Description>
+							<Field.Title>{soundEvent.label}</Field.Title>
+							<Field.Description>{soundEvent.description}</Field.Description>
 						</Field.Content>
 						<div class="flex items-center gap-2">
 							<Button
 								variant="outline"
 								size="sm"
-								onclick={() => testSound(event.key)}
-								disabled={!settings.value[`sound.playOn.${event.key}` as keyof typeof settings.value]}
+								onclick={() =>
+									rpc.sound.playSoundIfEnabled.execute(soundEvent.key)}
+								disabled={!settings.value[`sound.playOn.${soundEvent.key}`]}
 							>
 								<PlayIcon class="mr-2 size-4" />
 								Test
 							</Button>
 							<Switch
-								id="sound.playOn.{event.key}"
+								id={`sound.playOn.${soundEvent.key}`}
 								bind:checked={
-									() => settings.value[`sound.playOn.${event.key}` as keyof typeof settings.value] as boolean,
-									(v) => settings.updateKey(`sound.playOn.${event.key}` as keyof typeof settings.value, v as never)
+									() => settings.value[`sound.playOn.${soundEvent.key}`],
+									(v) => settings.updateKey(`sound.playOn.${soundEvent.key}`, v)
 								}
 							/>
 						</div>
@@ -192,33 +141,55 @@
 
 					<Field.Field>
 						<Field.Label>Volume</Field.Label>
-						<div class="flex items-center gap-4">
-							<Slider
-								type="single"
-								value={[Math.round((settings.value[`sound.volume.${event.key}` as keyof typeof settings.value] as number) * 100)]}
-								onValueChange={(v) => {
-									settings.updateKey(`sound.volume.${event.key}` as keyof typeof settings.value, (v[0] / 100) as never);
-								}}
-								max={100}
-								min={0}
-								step={5}
-								class="flex-1"
-							/>
-							<span class="text-sm font-medium w-12 text-right tabular-nums">
-								{Math.round((settings.value[`sound.volume.${event.key}` as keyof typeof settings.value] as number) * 100)}%
-							</span>
-						</div>
+						<Field.Description>
+							<span class="font-medium tabular-nums"
+								>{Math.round(
+									settings.value[`sound.volume.${soundEvent.key}`] * 100,
+								)}%</span
+							>
+						</Field.Description>
+						<Slider
+							type="single"
+							bind:value={
+								() =>
+									Math.round(
+										settings.value[`sound.volume.${soundEvent.key}`] * 100,
+									),
+								(v) =>
+									settings.updateKey(`sound.volume.${soundEvent.key}`, v / 100)
+							}
+							max={100}
+							min={0}
+							step={5}
+							class="w-full"
+							aria-label="{soundEvent.label} volume"
+						/>
 					</Field.Field>
 
 					<Field.Field>
 						<Field.Label>Custom Sound</Field.Label>
-						{#if settings.value[`sound.custom.${event.key}` as keyof typeof settings.value]}
+						{#if settings.value[`sound.custom.${soundEvent.key}`]}
 							<div class="flex items-center gap-2 p-2 bg-muted rounded">
 								<span class="text-sm flex-1">Custom sound uploaded</span>
 								<Button
 									variant="outline"
 									size="sm"
-									onclick={() => removeCustomSound(event.key)}
+									onclick={async () => {
+										const { error } = await db.sounds.delete(soundEvent.key);
+										if (error) {
+											rpc.notify.error.execute({
+												title: 'Failed to remove custom sound',
+												description: 'Please try again.',
+												action: { type: 'more-details', error },
+											});
+											return;
+										}
+										settings.updateKey(`sound.custom.${soundEvent.key}`, false);
+										rpc.notify.success.execute({
+											title: 'Custom sound removed',
+											description: `Reverted to default sound for ${soundEvent.label}.`,
+										});
+									}}
 								>
 									<XIcon class="mr-1 size-3" />
 									Remove
@@ -229,7 +200,49 @@
 								accept={ACCEPT_AUDIO}
 								maxFiles={1}
 								maxFileSize={5 * MEGABYTE}
-								onUpload={(files) => handleCustomSoundUpload(files, event.key)}
+								onUpload={async (files) => {
+									const file = files[0];
+									if (!file) return;
+
+									if (!file.type.startsWith('audio/')) {
+										rpc.notify.error.execute({
+											title: 'Invalid file type',
+											description:
+												'Please upload an audio file (MP3, WAV, OGG, etc.)',
+										});
+										return;
+									}
+
+									if (file.size > 5 * MEGABYTE) {
+										rpc.notify.error.execute({
+											title: 'File too large',
+											description: 'File size must be less than 5MB',
+										});
+										return;
+									}
+
+									const { error } = await db.sounds.save(soundEvent.key, file, {
+										fileName: file.name,
+										fileSize: file.size,
+										blobType: file.type,
+										uploadedAt: new Date().toISOString(),
+									});
+									if (error) {
+										rpc.notify.error.execute({
+											title: 'Upload failed',
+											description:
+												'Failed to save custom sound. Please try again.',
+											action: { type: 'more-details', error },
+										});
+										return;
+									}
+
+									settings.updateKey(`sound.custom.${soundEvent.key}`, true);
+									rpc.notify.success.execute({
+										title: 'Custom sound uploaded',
+										description: `Custom sound for ${soundEvent.label} has been saved.`,
+									});
+								}}
 								class="h-20"
 							>
 								<div class="flex flex-col items-center gap-1">

@@ -22,6 +22,11 @@ export type DbService = {
 		getLatest(): Promise<Result<Recording | null, DbServiceError>>;
 		getTranscribingIds(): Promise<Result<string[], DbServiceError>>;
 		getById(id: string): Promise<Result<Recording | null, DbServiceError>>;
+		/**
+		 * Create one or more recordings with their audio.
+		 * Bulk operations are all-or-nothing: if any recording fails to serialize
+		 * or insert, the entire operation fails and no recordings are created.
+		 */
 		create(
 			params: RecordingWithAudio | RecordingWithAudio[],
 		): Promise<Result<void, DbServiceError>>;

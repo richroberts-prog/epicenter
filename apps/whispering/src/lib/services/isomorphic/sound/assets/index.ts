@@ -33,33 +33,23 @@ type CachedAudio = {
 const cache = new Map<SoundName, CachedAudio>();
 
 /**
- * Gets the audio source URL for a sound.
- * Checks IndexedDB for custom sound first, falls back to default.
- */
-async function getSourceUrl(soundName: SoundName): Promise<{ url: string; isBlob: boolean }> {
-	const { data: customBlob } = await DbServiceLive.sounds.get(soundName);
-
-	if (customBlob) {
-		return { url: URL.createObjectURL(customBlob), isBlob: true };
-	}
-
-	return { url: DEFAULT_SOUNDS[soundName], isBlob: false };
-}
-
-/**
  * Gets a ready-to-play audio element for a sound.
- * Uses cached element if available, creates new one if not.
  * Custom sounds from IndexedDB take priority over bundled defaults.
  */
 export async function getAudio(soundName: SoundName): Promise<HTMLAudioElement> {
-	const { url, isBlob } = await getSourceUrl(soundName);
+	// Check for custom sound first, fall back to default
+	const { data: customBlob } = await DbServiceLive.sounds.get(soundName);
+	const url = customBlob
+		? URL.createObjectURL(customBlob)
+		: DEFAULT_SOUNDS[soundName];
+
 	const cached = cache.get(soundName);
 
 	if (!cached) {
 		// First time playing this sound - create and cache
 		const element = new Audio(url);
 		element.preload = 'auto';
-		cache.set(soundName, { element, blobUrl: isBlob ? url : null });
+		cache.set(soundName, { element, blobUrl: customBlob ? url : null });
 		return element;
 	}
 
@@ -72,7 +62,7 @@ export async function getAudio(soundName: SoundName): Promise<HTMLAudioElement> 
 
 		cached.element.src = url;
 		cached.element.load();
-		cached.blobUrl = isBlob ? url : null;
+		cached.blobUrl = customBlob ? url : null;
 	}
 
 	cached.element.currentTime = 0;

@@ -1059,11 +1059,9 @@ export function createFileSystemDb(): DbService {
 				return tryAsync({
 					try: async () => {
 						const soundsPath = await PATHS.DB.CUSTOM_SOUNDS();
-
-						// Ensure directory exists
 						await mkdir(soundsPath, { recursive: true });
 
-						// Delete any existing sound files for this soundId
+						// Delete any existing audio file for this soundId
 						const existingAudioPath = await findAudioFileBySoundId(
 							soundsPath,
 							soundId,
@@ -1071,12 +1069,8 @@ export function createFileSystemDb(): DbService {
 						if (existingAudioPath) {
 							await remove(existingAudioPath);
 						}
-						const existingMetaPath = await join(soundsPath, `${soundId}.md`);
-						if (await exists(existingMetaPath)) {
-							await remove(existingMetaPath);
-						}
 
-						// 1. Write audio file
+						// Write audio file
 						const extension = mime.getExtension(file.type) ?? 'bin';
 						const audioPath = await join(
 							soundsPath,
@@ -1084,21 +1078,6 @@ export function createFileSystemDb(): DbService {
 						);
 						const arrayBuffer = await file.arrayBuffer();
 						await writeFile(audioPath, new Uint8Array(arrayBuffer));
-
-						// 2. Write metadata file as markdown with YAML front matter
-						const metaPath = await join(soundsPath, `${soundId}.md`);
-						const metadata = {
-							fileName: file.name,
-							fileSize: file.size,
-							blobType: file.type,
-							uploadedAt: new Date().toISOString(),
-						};
-						const mdContent = matter.stringify('', metadata);
-
-						// Atomic write
-						const tmpPath = `${metaPath}.tmp`;
-						await writeTextFile(tmpPath, mdContent);
-						await rename(tmpPath, metaPath);
 					},
 					catch: (error) =>
 						DbServiceErr({
@@ -1111,17 +1090,9 @@ export function createFileSystemDb(): DbService {
 				return tryAsync({
 					try: async () => {
 						const soundsPath = await PATHS.DB.CUSTOM_SOUNDS();
-
-						// Delete audio file
 						const audioPath = await findAudioFileBySoundId(soundsPath, soundId);
 						if (audioPath) {
 							await remove(audioPath);
-						}
-
-						// Delete metadata file
-						const metaPath = await join(soundsPath, `${soundId}.md`);
-						if (await exists(metaPath)) {
-							await remove(metaPath);
 						}
 					},
 					catch: (error) =>

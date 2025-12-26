@@ -203,9 +203,9 @@
 		<!-- Container with relative positioning for the button and absolute selectors -->
 		<div class="relative">
 			<Button
-				tooltip={getRecorderStateQuery.data === 'IDLE'
-					? 'Start recording'
-					: 'Stop recording'}
+				tooltip={getRecorderStateQuery.data === 'RECORDING'
+					? 'Stop recording'
+					: 'Start recording'}
 				onclick={() => commandCallbacks.toggleManualRecording()}
 				variant="ghost"
 				class="shrink-0 size-32 sm:size-36 lg:size-40 xl:size-44 transform items-center justify-center overflow-hidden duration-300 ease-in-out"

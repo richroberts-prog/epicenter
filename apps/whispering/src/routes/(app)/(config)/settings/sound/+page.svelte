@@ -9,7 +9,7 @@
 	import { settings } from '$lib/stores/settings.svelte';
 	import { type WhisperingSoundNames } from '$lib/constants/sounds';
 	import { rpc } from '$lib/query';
-	import { db } from '$lib/services';
+	import { services } from '$lib/services';
 	import {
 		FileDropZone,
 		ACCEPT_AUDIO,
@@ -170,7 +170,7 @@
 									variant="outline"
 									size="sm"
 									onclick={async () => {
-										const { error } = await db.sounds.delete(soundEvent.key);
+										const { error } = await services.db.sounds.delete(soundEvent.key);
 										if (error) {
 											rpc.notify.error.execute({
 												title: 'Failed to remove custom sound',
@@ -205,12 +205,7 @@
 									const file = files[0];
 									if (!file) return;
 
-									const { error } = await db.sounds.save(soundEvent.key, file, {
-										fileName: file.name,
-										fileSize: file.size,
-										blobType: file.type,
-										uploadedAt: new Date().toISOString(),
-									});
+									const { error } = await services.db.sounds.save(soundEvent.key, file);
 									if (error) {
 										rpc.notify.error.execute({
 											title: 'Upload failed',

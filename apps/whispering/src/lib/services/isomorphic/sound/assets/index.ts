@@ -42,22 +42,29 @@ export const audioElements = {
 	'vad-start': createAudioElement(defaultSounds['vad-start']),
 	'vad-capture': createAudioElement(defaultSounds['vad-capture']),
 	'vad-stop': createAudioElement(defaultSounds['vad-stop']),
-	transcriptionComplete: createAudioElement(defaultSounds.transcriptionComplete),
-	transformationComplete: createAudioElement(defaultSounds.transformationComplete),
+	transcriptionComplete: createAudioElement(
+		defaultSounds.transcriptionComplete,
+	),
+	transformationComplete: createAudioElement(
+		defaultSounds.transformationComplete,
+	),
 } satisfies Record<WhisperingSoundNames, HTMLAudioElement>;
 
 // Async function to resolve audio source (database or default)
-export const resolveAudioSource = async (soundName: WhisperingSoundNames): Promise<string> => {
+const resolveAudioSource = async (
+	soundName: WhisperingSoundNames,
+): Promise<string> => {
 	// Import here to avoid circular dependencies
 	const { settings } = await import('$lib/stores/settings.svelte');
-	const { db } = await import('$lib/services');
+	const { services } = await import('$lib/services');
 
 	// Check if custom sound exists (from settings flag)
 	const hasCustomSound = settings.value[`sound.custom.${soundName}`];
 
 	if (hasCustomSound) {
 		try {
-			const { data: customBlob, error } = await db.sounds.get(soundName);
+			const { data: customBlob, error } =
+				await services.db.sounds.get(soundName);
 
 			if (!error && customBlob) {
 				const tempUrl = URL.createObjectURL(customBlob);
@@ -80,7 +87,7 @@ export const resolveAudioSource = async (soundName: WhisperingSoundNames): Promi
 export const updateAudioSource = async (soundName: WhisperingSoundNames) => {
 	const audioElement = audioElements[soundName];
 	const newSrc = await resolveAudioSource(soundName);
-	
+
 	if (audioElement.src !== newSrc) {
 		audioElement.src = newSrc;
 		// Preload the new sound

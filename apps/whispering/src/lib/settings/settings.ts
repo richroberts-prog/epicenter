@@ -36,6 +36,8 @@ import {
 	RECORDING_MODES,
 } from '$lib/constants/audio';
 import { CommandOrAlt, CommandOrControl } from '$lib/constants/keyboard';
+import type { WhisperingSoundNames } from '$lib/constants/sounds';
+import type { Command } from '$lib/commands';
 import { SUPPORTED_LANGUAGES } from '$lib/constants/languages';
 import { ALWAYS_ON_TOP_MODES, LAYOUT_MODES } from '$lib/constants/ui';
 import {

@@ -358,32 +358,6 @@ class WhisperingDatabase extends Dexie {
 // const downloadIndexedDbBlobWithToast = useDownloadIndexedDbBlobWithToast();
 
 /**
- * Convert Blob to serialized format for IndexedDB storage.
- * Returns null if conversion fails.
- */
-async function blobToSerializedAudio(
-	blob: Blob,
-): Promise<SerializedAudio | undefined> {
-	const arrayBuffer = await blob.arrayBuffer().catch((error) => {
-		console.error('Error getting array buffer from blob', blob, error);
-		return undefined;
-	});
-
-	if (!arrayBuffer) return undefined;
-
-	return { arrayBuffer, blobType: blob.type };
-}
-
-/**
- * Convert serialized audio back to Blob for use in the application.
- */
-function serializedAudioToBlob(serializedAudio: SerializedAudio): Blob {
-	return new Blob([serializedAudio.arrayBuffer], {
-		type: serializedAudio.blobType,
-	});
-}
-
-/**
  * Cache for audio object URLs to avoid recreating them.
  * Maps recordingId -> object URL
  */
@@ -1020,10 +994,7 @@ export function createDbServiceWeb({
 						const customSound = await db.customSounds.get(soundId);
 						if (!customSound) return null;
 
-						// Convert serialized audio back to Blob
-						return new Blob([customSound.serializedAudio.arrayBuffer], {
-							type: customSound.serializedAudio.blobType,
-						});
+						return serializedAudioToBlob(customSound.serializedAudio);
 					},
 					catch: (error) =>
 						DbServiceErr({
@@ -1035,10 +1006,13 @@ export function createDbServiceWeb({
 			async save(soundId, file) {
 				return tryAsync({
 					try: async () => {
-						const arrayBuffer = await file.arrayBuffer();
+						const serializedAudio = await blobToSerializedAudio(file);
+						if (!serializedAudio) {
+							throw new Error('Failed to serialize audio file');
+						}
 						const customSound = {
 							id: soundId,
-							serializedAudio: { arrayBuffer, blobType: file.type },
+							serializedAudio,
 						} satisfies CustomSound;
 						await db.customSounds.put(customSound);
 					},
@@ -1060,4 +1034,30 @@ export function createDbServiceWeb({
 			},
 		},
 	};
+}
+
+/**
+ * Convert Blob to serialized format for IndexedDB storage.
+ * Returns null if conversion fails.
+ */
+async function blobToSerializedAudio(
+	blob: Blob,
+): Promise<SerializedAudio | undefined> {
+	const arrayBuffer = await blob.arrayBuffer().catch((error) => {
+		console.error('Error getting array buffer from blob', blob, error);
+		return undefined;
+	});
+
+	if (!arrayBuffer) return undefined;
+
+	return { arrayBuffer, blobType: blob.type };
+}
+
+/**
+ * Convert serialized audio back to Blob for use in the application.
+ */
+function serializedAudioToBlob(serializedAudio: SerializedAudio): Blob {
+	return new Blob([serializedAudio.arrayBuffer], {
+		type: serializedAudio.blobType,
+	});
 }

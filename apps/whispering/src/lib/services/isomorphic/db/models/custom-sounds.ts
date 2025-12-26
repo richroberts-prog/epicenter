@@ -8,15 +8,3 @@ export interface CustomSound {
 	uploadedAt: string;
 	updatedAt: string;
 }
-
-export interface CustomSoundUpload {
-	file: File;
-	soundKey: WhisperingSoundNames;
-}
-
-export interface CustomSoundMetadata {
-	fileName: string;
-	fileSize: number;
-	blobType: string;
-	uploadedAt: string;
-}

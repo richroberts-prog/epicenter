@@ -30,8 +30,4 @@ export {
 export type { TransformationV1, TransformationV2 } from './transformations';
 export { generateDefaultTransformation, Transformation } from './transformations';
 // Custom Sounds
-export type {
-	CustomSound,
-	CustomSoundMetadata,
-	CustomSoundUpload,
-} from './custom-sounds';
+export type { CustomSound } from './custom-sounds';

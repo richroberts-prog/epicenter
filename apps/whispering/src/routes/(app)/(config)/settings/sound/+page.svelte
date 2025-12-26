@@ -1,6 +1,7 @@
 <script lang="ts">
 	import * as Field from '@epicenter/ui/field';
 	import * as Item from '@epicenter/ui/item';
+	import { Badge } from '@epicenter/ui/badge';
 	import { Button } from '@epicenter/ui/button';
 	import { Switch } from '@epicenter/ui/switch';
 	import { Slider } from '@epicenter/ui/slider';
@@ -17,6 +18,8 @@
 		ACCEPT_AUDIO,
 		MEGABYTE,
 	} from '@epicenter/ui/file-drop-zone';
+	import OpenFolderButton from '$lib/components/OpenFolderButton.svelte';
+	import { PATHS } from '$lib/constants/paths';
 	const SOUND_EVENTS = [
 		{
 			key: 'manual-start',
@@ -85,11 +88,17 @@
 </svelte:head>
 
 <div class="space-y-6">
-	<div>
-		<h3 class="text-lg font-medium">Sound Settings</h3>
-		<p class="text-muted-foreground text-sm">
-			Configure notification sounds, volumes, and custom sounds.
-		</p>
+	<div class="flex items-start justify-between">
+		<div>
+			<h3 class="text-lg font-medium">Sound Settings</h3>
+			<p class="text-muted-foreground text-sm">
+				Configure notification sounds, volumes, and custom sounds.
+			</p>
+		</div>
+		<OpenFolderButton
+			getFolderPath={PATHS.DB.CUSTOM_SOUNDS}
+			tooltipText="Open custom sounds folder"
+		/>
 	</div>
 
 	<!-- Global Volume Control -->
@@ -216,7 +225,7 @@
 								<Item.Content>
 									<Item.Title>Custom sound active</Item.Title>
 									<Item.Description>
-										Your custom notification sound is active
+										<Badge variant="id">{soundEvent.label}</Badge>
 									</Item.Description>
 								</Item.Content>
 								<Item.Actions>

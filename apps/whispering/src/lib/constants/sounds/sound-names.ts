@@ -12,8 +12,8 @@ export const SOUND_NAMES = [
 	'vad-start',
 	'vad-capture',
 	'vad-stop',
-	'transcriptionComplete',
-	'transformationComplete',
+	'transcription-complete',
+	'transformation-complete',
 ] as const;
 
 export type SoundName = (typeof SOUND_NAMES)[number];

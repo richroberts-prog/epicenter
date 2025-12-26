@@ -15,19 +15,62 @@
 		ACCEPT_AUDIO,
 		MEGABYTE,
 	} from '@epicenter/ui/file-drop-zone';
-
 	const SOUND_EVENTS = [
-		{ key: 'manual-start', label: 'Manual Recording Start', description: 'When you start recording manually' },
-		{ key: 'manual-stop', label: 'Manual Recording Stop', description: 'When you stop recording manually' },
-		{ key: 'manual-cancel', label: 'Manual Recording Cancel', description: 'When you cancel recording manually' },
-		{ key: 'cpal-start', label: 'CPAL Recording Start', description: 'When CPAL recording starts' },
-		{ key: 'cpal-stop', label: 'CPAL Recording Stop', description: 'When CPAL recording stops' },
-		{ key: 'cpal-cancel', label: 'CPAL Recording Cancel', description: 'When CPAL recording is cancelled' },
-		{ key: 'vad-start', label: 'VAD Session Start', description: 'When voice activity detection session begins' },
-		{ key: 'vad-capture', label: 'VAD Capture', description: 'When voice activity is detected and captured' },
-		{ key: 'vad-stop', label: 'VAD Session Stop', description: 'When voice activity detection session ends' },
-		{ key: 'transcriptionComplete', label: 'Transcription Complete', description: 'When audio transcription finishes' },
-		{ key: 'transformationComplete', label: 'Transformation Complete', description: 'When text transformation finishes' },
+		{
+			key: 'manual-start',
+			label: 'Manual Recording Start',
+			description: 'When you start recording manually',
+		},
+		{
+			key: 'manual-stop',
+			label: 'Manual Recording Stop',
+			description: 'When you stop recording manually',
+		},
+		{
+			key: 'manual-cancel',
+			label: 'Manual Recording Cancel',
+			description: 'When you cancel recording manually',
+		},
+		{
+			key: 'cpal-start',
+			label: 'CPAL Recording Start',
+			description: 'When CPAL recording starts',
+		},
+		{
+			key: 'cpal-stop',
+			label: 'CPAL Recording Stop',
+			description: 'When CPAL recording stops',
+		},
+		{
+			key: 'cpal-cancel',
+			label: 'CPAL Recording Cancel',
+			description: 'When CPAL recording is cancelled',
+		},
+		{
+			key: 'vad-start',
+			label: 'VAD Session Start',
+			description: 'When voice activity detection session begins',
+		},
+		{
+			key: 'vad-capture',
+			label: 'VAD Capture',
+			description: 'When voice activity is detected and captured',
+		},
+		{
+			key: 'vad-stop',
+			label: 'VAD Session Stop',
+			description: 'When voice activity detection session ends',
+		},
+		{
+			key: 'transcription-complete',
+			label: 'Transcription Complete',
+			description: 'When audio transcription finishes',
+		},
+		{
+			key: 'transformation-complete',
+			label: 'Transformation Complete',
+			description: 'When text transformation finishes',
+		},
 	] as const satisfies {
 		key: SoundName;
 		label: string;
@@ -89,7 +132,7 @@
 						variant="outline"
 						size="sm"
 						onclick={() =>
-							rpc.sound.playSoundIfEnabled.execute('transcriptionComplete')}
+							rpc.sound.playSoundIfEnabled.execute('transcription-complete')}
 					>
 						<PlayIcon class="mr-2 size-4" />
 						Test

@@ -96,8 +96,8 @@ export const Settings = type({
 		'sound.playOn.vad-start': 'boolean = true',
 		'sound.playOn.vad-capture': 'boolean = true',
 		'sound.playOn.vad-stop': 'boolean = true',
-		'sound.playOn.transcriptionComplete': 'boolean = true',
-		'sound.playOn.transformationComplete': 'boolean = true',
+		'sound.playOn.transcription-complete': 'boolean = true',
+		'sound.playOn.transformation-complete': 'boolean = true',
 	} as const satisfies Record<`sound.playOn.${SoundName}`, string>),
 
 	// Sound settings - volume (0.0 to 1.0)
@@ -112,8 +112,8 @@ export const Settings = type({
 		'sound.volume.vad-start': 'number = 0.5',
 		'sound.volume.vad-capture': 'number = 0.5',
 		'sound.volume.vad-stop': 'number = 0.5',
-		'sound.volume.transcriptionComplete': 'number = 0.5',
-		'sound.volume.transformationComplete': 'number = 0.5',
+		'sound.volume.transcription-complete': 'number = 0.5',
+		'sound.volume.transformation-complete': 'number = 0.5',
 	} as const satisfies Record<`sound.volume.${SoundName}`, string>),
 
 	// Sound settings - custom sound flags
@@ -127,8 +127,8 @@ export const Settings = type({
 		'sound.custom.vad-start': 'boolean = false',
 		'sound.custom.vad-capture': 'boolean = false',
 		'sound.custom.vad-stop': 'boolean = false',
-		'sound.custom.transcriptionComplete': 'boolean = false',
-		'sound.custom.transformationComplete': 'boolean = false',
+		'sound.custom.transcription-complete': 'boolean = false',
+		'sound.custom.transformation-complete': 'boolean = false',
 	} as const satisfies Record<`sound.custom.${SoundName}`, string>),
 
 	'transcription.copyToClipboardOnSuccess': 'boolean = true',

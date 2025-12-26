@@ -19,8 +19,8 @@ const DEFAULT_SOUNDS: Record<SoundName, string> = {
 	'vad-start': snoozeButtonPress2Src,
 	'vad-capture': buttonBlipSrc,
 	'vad-stop': snoozeButtonPress1Src,
-	transcriptionComplete: bellSynthSrc,
-	transformationComplete: alertChimeSrc,
+	'transcription-complete': bellSynthSrc,
+	'transformation-complete': alertChimeSrc,
 };
 
 /**

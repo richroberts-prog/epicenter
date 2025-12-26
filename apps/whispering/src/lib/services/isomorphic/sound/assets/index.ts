@@ -23,48 +23,58 @@ const DEFAULT_SOUNDS: Record<SoundName, string> = {
 	transformationComplete: alertChimeSrc,
 };
 
-/** Cached audio elements for lazy initialization */
-const audioCache = new Map<SoundName, HTMLAudioElement>();
+type CachedAudio = {
+	element: HTMLAudioElement;
+	/** Blob URL that needs cleanup when source changes (only for custom sounds) */
+	blobUrl: string | null;
+};
 
-/** Active blob URLs that need cleanup */
-const activeBlobUrls = new Map<SoundName, string>();
+/** Cached audio elements with blob URL tracking */
+const cache = new Map<SoundName, CachedAudio>();
 
 /**
- * Prepares an audio element for playback.
- * First tries to load custom sound from IndexedDB, then falls back to default.
+ * Gets the audio source URL for a sound.
+ * Checks IndexedDB for custom sound first, falls back to default.
  */
-export async function prepareAudioForPlayback(
-	soundName: SoundName,
-): Promise<HTMLAudioElement> {
-	// Try to load custom sound first
+async function getSourceUrl(soundName: SoundName): Promise<{ url: string; isBlob: boolean }> {
 	const { data: customBlob } = await DbServiceLive.sounds.get(soundName);
 
-	let src: string;
 	if (customBlob) {
-		// Clean up previous blob URL for this sound if it exists
-		const previousUrl = activeBlobUrls.get(soundName);
-		if (previousUrl) {
-			URL.revokeObjectURL(previousUrl);
+		return { url: URL.createObjectURL(customBlob), isBlob: true };
+	}
+
+	return { url: DEFAULT_SOUNDS[soundName], isBlob: false };
+}
+
+/**
+ * Gets a ready-to-play audio element for a sound.
+ * Uses cached element if available, creates new one if not.
+ * Custom sounds from IndexedDB take priority over bundled defaults.
+ */
+export async function getAudio(soundName: SoundName): Promise<HTMLAudioElement> {
+	const { url, isBlob } = await getSourceUrl(soundName);
+	const cached = cache.get(soundName);
+
+	if (!cached) {
+		// First time playing this sound - create and cache
+		const element = new Audio(url);
+		element.preload = 'auto';
+		cache.set(soundName, { element, blobUrl: isBlob ? url : null });
+		return element;
+	}
+
+	// Sound source changed (custom sound added/removed)
+	if (cached.element.src !== url) {
+		// Clean up old blob URL if it exists
+		if (cached.blobUrl) {
+			URL.revokeObjectURL(cached.blobUrl);
 		}
-		src = URL.createObjectURL(customBlob);
-		activeBlobUrls.set(soundName, src);
-	} else {
-		// Fall back to default bundled sound
-		src = DEFAULT_SOUNDS[soundName];
+
+		cached.element.src = url;
+		cached.element.load();
+		cached.blobUrl = isBlob ? url : null;
 	}
 
-	// Get or create cached audio element
-	let audio = audioCache.get(soundName);
-	if (!audio) {
-		audio = new Audio(src);
-		audio.preload = 'auto';
-		audioCache.set(soundName, audio);
-	} else if (audio.src !== src) {
-		// Update source if it changed (e.g., custom sound added/removed)
-		audio.src = src;
-		audio.load();
-	}
-
-	audio.currentTime = 0;
-	return audio;
+	cached.element.currentTime = 0;
+	return cached.element;
 }

@@ -1,6 +1,6 @@
 import { Ok } from 'wellcrafted/result';
 import type { PlaySoundService } from '.';
-import { prepareAudioForPlayback } from './assets';
+import { getAudio } from './assets';
 
 export function createPlaySoundServiceWeb(): PlaySoundService {
 	return {
@@ -10,7 +10,7 @@ export function createPlaySoundServiceWeb(): PlaySoundService {
 				return Ok(undefined);
 			}
 
-			const audio = await prepareAudioForPlayback(soundName);
+			const audio = await getAudio(soundName);
 			audio.volume = volume;
 			await audio.play();
 

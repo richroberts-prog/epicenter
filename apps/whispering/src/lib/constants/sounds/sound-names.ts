@@ -1,8 +1,8 @@
 /**
- * Built-in sound effect names with known defaults.
- * Custom sounds can use any string identifier.
+ * Sound event names used throughout the application.
+ * Users can override the audio file for any sound via custom uploads.
  */
-export const BUILTIN_SOUND_NAMES = [
+export const SOUND_NAMES = [
 	'manual-start',
 	'manual-stop',
 	'manual-cancel',
@@ -16,10 +16,4 @@ export const BUILTIN_SOUND_NAMES = [
 	'transformationComplete',
 ] as const;
 
-export type BuiltinSoundName = (typeof BUILTIN_SOUND_NAMES)[number];
-
-/**
- * Sound names used throughout the application.
- * Includes built-in sounds with autocomplete, plus arbitrary custom sound IDs.
- */
-export type WhisperingSoundNames = BuiltinSoundName | (string & {});
+export type SoundName = (typeof SOUND_NAMES)[number];

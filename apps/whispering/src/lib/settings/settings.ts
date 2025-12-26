@@ -36,7 +36,7 @@ import {
 	RECORDING_MODES,
 } from '$lib/constants/audio';
 import { CommandOrAlt, CommandOrControl } from '$lib/constants/keyboard';
-import type { WhisperingSoundNames } from '$lib/constants/sounds';
+import type { SoundName } from '$lib/constants/sounds';
 import type { Command } from '$lib/commands';
 import { SUPPORTED_LANGUAGES } from '$lib/constants/languages';
 import { ALWAYS_ON_TOP_MODES, LAYOUT_MODES } from '$lib/constants/ui';
@@ -98,7 +98,7 @@ export const Settings = type({
 		'sound.playOn.vad-stop': 'boolean = true',
 		'sound.playOn.transcriptionComplete': 'boolean = true',
 		'sound.playOn.transformationComplete': 'boolean = true',
-	} as const satisfies Record<`sound.playOn.${WhisperingSoundNames}`, string>),
+	} as const satisfies Record<`sound.playOn.${SoundName}`, string>),
 
 	// Sound settings - volume (0.0 to 1.0)
 	'sound.volume': 'number = 0.5', // Global volume control
@@ -114,7 +114,7 @@ export const Settings = type({
 		'sound.volume.vad-stop': 'number = 0.5',
 		'sound.volume.transcriptionComplete': 'number = 0.5',
 		'sound.volume.transformationComplete': 'number = 0.5',
-	} as const satisfies Record<`sound.volume.${WhisperingSoundNames}`, string>),
+	} as const satisfies Record<`sound.volume.${SoundName}`, string>),
 
 	// Sound settings - custom sound flags
 	...({
@@ -129,7 +129,7 @@ export const Settings = type({
 		'sound.custom.vad-stop': 'boolean = false',
 		'sound.custom.transcriptionComplete': 'boolean = false',
 		'sound.custom.transformationComplete': 'boolean = false',
-	} as const satisfies Record<`sound.custom.${WhisperingSoundNames}`, string>),
+	} as const satisfies Record<`sound.custom.${SoundName}`, string>),
 
 	'transcription.copyToClipboardOnSuccess': 'boolean = true',
 	'transcription.writeToCursorOnSuccess': 'boolean = true',

@@ -11,11 +11,6 @@ export function createPlaySoundServiceWeb(): PlaySoundService {
 			}
 
 			const audio = await prepareAudioForPlayback(soundName);
-			if (!audio) {
-				// Sound not found (custom sound not in IndexedDB)
-				return Ok(undefined);
-			}
-
 			audio.volume = volume;
 			await audio.play();
 

@@ -1,4 +1,4 @@
-import type { WhisperingSoundNames } from '$lib/constants/sounds';
+import type { SoundName } from '$lib/constants/sounds';
 import type { SerializedAudio } from './recordings';
 
 /**
@@ -12,6 +12,6 @@ import type { SerializedAudio } from './recordings';
  * storage issues (same pattern as recordings).
  */
 export type CustomSound = {
-	id: WhisperingSoundNames;
+	id: SoundName;
 	serializedAudio: SerializedAudio;
 };

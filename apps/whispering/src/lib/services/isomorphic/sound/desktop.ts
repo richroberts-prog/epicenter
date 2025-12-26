@@ -10,10 +10,6 @@ export function createPlaySoundServiceDesktop(): PlaySoundService {
 			tryAsync({
 				try: async () => {
 					const audio = await prepareAudioForPlayback(soundName);
-					if (!audio) {
-						// Sound not found (custom sound not in IndexedDB) - silently skip
-						return;
-					}
 					audio.volume = volume;
 					await audio.play();
 				},

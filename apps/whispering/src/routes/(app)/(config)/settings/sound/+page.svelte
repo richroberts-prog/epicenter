@@ -7,7 +7,7 @@
 	import UploadIcon from '@lucide/svelte/icons/upload';
 	import XIcon from '@lucide/svelte/icons/x';
 	import { settings } from '$lib/stores/settings.svelte';
-	import { type WhisperingSoundNames } from '$lib/constants/sounds';
+	import { type SoundName } from '$lib/constants/sounds';
 	import { rpc } from '$lib/query';
 	import { services } from '$lib/services';
 	import {
@@ -29,7 +29,7 @@
 		{ key: 'transcriptionComplete', label: 'Transcription Complete', description: 'When audio transcription finishes' },
 		{ key: 'transformationComplete', label: 'Transformation Complete', description: 'When text transformation finishes' },
 	] as const satisfies {
-		key: WhisperingSoundNames;
+		key: SoundName;
 		label: string;
 		description: string;
 	}[];

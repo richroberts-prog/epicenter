@@ -23,48 +23,22 @@ const DEFAULT_SOUNDS: Record<SoundName, string> = {
 	transformationComplete: alertChimeSrc,
 };
 
-type CachedAudio = {
-	element: HTMLAudioElement;
-	/** Blob URL that needs cleanup when source changes (only for custom sounds) */
-	blobUrl: string | null;
-};
-
-/** Cached audio elements with blob URL tracking */
-const cache = new Map<SoundName, CachedAudio>();
-
 /**
- * Gets a ready-to-play audio element for a sound.
+ * Creates a fresh audio element for a sound.
  * Custom sounds from IndexedDB take priority over bundled defaults.
+ * Browser HTTP cache handles bundled assets; blob URLs are cleaned up after playback.
  */
-export async function getAudio(soundName: SoundName): Promise<HTMLAudioElement> {
-	// Check for custom sound first, fall back to default
+export async function getAudio(
+	soundName: SoundName,
+): Promise<HTMLAudioElement> {
 	const { data: customBlob } = await DbServiceLive.sounds.get(soundName);
-	const url = customBlob
-		? URL.createObjectURL(customBlob)
-		: DEFAULT_SOUNDS[soundName];
 
-	const cached = cache.get(soundName);
-
-	if (!cached) {
-		// First time playing this sound - create and cache
-		const element = new Audio(url);
-		element.preload = 'auto';
-		cache.set(soundName, { element, blobUrl: customBlob ? url : null });
-		return element;
+	if (customBlob) {
+		const url = URL.createObjectURL(customBlob);
+		const audio = new Audio(url);
+		audio.onended = () => URL.revokeObjectURL(url);
+		return audio;
 	}
 
-	// Sound source changed (custom sound added/removed)
-	if (cached.element.src !== url) {
-		// Clean up old blob URL if it exists
-		if (cached.blobUrl) {
-			URL.revokeObjectURL(cached.blobUrl);
-		}
-
-		cached.element.src = url;
-		cached.element.load();
-		cached.blobUrl = customBlob ? url : null;
-	}
-
-	cached.element.currentTime = 0;
-	return cached.element;
+	return new Audio(DEFAULT_SOUNDS[soundName]);
 }

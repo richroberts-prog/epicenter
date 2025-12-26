@@ -21,7 +21,10 @@ export {
 	TransformationStepRunRunning,
 } from './transformation-runs';
 // Transformation Steps
-export type { TransformationStepV1, TransformationStepV2 } from './transformation-steps';
+export type {
+	TransformationStepV1,
+	TransformationStepV2,
+} from './transformation-steps';
 export {
 	generateDefaultTransformationStep,
 	TransformationStep,

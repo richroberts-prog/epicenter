@@ -19,7 +19,6 @@ import type {
 	TransformationRun,
 	TransformationRunCompleted,
 	TransformationRunFailed,
-	TransformationRunRunning,
 	TransformationStepRunCompleted,
 	TransformationStepRunFailed,
 	TransformationStepRunRunning,

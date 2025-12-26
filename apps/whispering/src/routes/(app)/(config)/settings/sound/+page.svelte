@@ -200,26 +200,15 @@
 								accept={ACCEPT_AUDIO}
 								maxFiles={1}
 								maxFileSize={5 * MEGABYTE}
+								onFileRejected={({ file, reason }) => {
+									rpc.notify.error.execute({
+										title: 'File rejected',
+										description: reason,
+									});
+								}}
 								onUpload={async (files) => {
 									const file = files[0];
 									if (!file) return;
-
-									if (!file.type.startsWith('audio/')) {
-										rpc.notify.error.execute({
-											title: 'Invalid file type',
-											description:
-												'Please upload an audio file (MP3, WAV, OGG, etc.)',
-										});
-										return;
-									}
-
-									if (file.size > 5 * MEGABYTE) {
-										rpc.notify.error.execute({
-											title: 'File too large',
-											description: 'File size must be less than 5MB',
-										});
-										return;
-									}
 
 									const { error } = await db.sounds.save(soundEvent.key, file, {
 										fileName: file.name,

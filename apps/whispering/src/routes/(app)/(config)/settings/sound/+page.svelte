@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { createQuery, createMutation } from '@tanstack/svelte-query';
 	import * as Field from '@epicenter/ui/field';
 	import * as Item from '@epicenter/ui/item';
 	import { Badge } from '@epicenter/ui/badge';
@@ -6,13 +7,13 @@
 	import { Switch } from '@epicenter/ui/switch';
 	import { Slider } from '@epicenter/ui/slider';
 	import CheckCircle2Icon from '@lucide/svelte/icons/check-circle-2';
+	import LoaderIcon from '@lucide/svelte/icons/loader';
 	import PlayIcon from '@lucide/svelte/icons/play';
 	import UploadIcon from '@lucide/svelte/icons/upload';
 	import XIcon from '@lucide/svelte/icons/x';
 	import { settings } from '$lib/stores/settings.svelte';
 	import { type SoundName } from '$lib/constants/sounds';
 	import { rpc } from '$lib/query';
-	import { services } from '$lib/services';
 	import {
 		FileDropZone,
 		ACCEPT_AUDIO,
@@ -20,6 +21,15 @@
 	} from '@epicenter/ui/file-drop-zone';
 	import OpenFolderButton from '$lib/components/OpenFolderButton.svelte';
 	import { PATHS } from '$lib/constants/paths';
+
+	// Query for all custom sounds - loads all blobs in parallel on mount
+	const customSoundsQuery = createQuery(() => rpc.db.sounds.getAll.options);
+
+	// Mutations for save and delete operations
+	const saveSoundMutation = createMutation(() => rpc.db.sounds.save.options);
+	const deleteSoundMutation = createMutation(
+		() => rpc.db.sounds.delete.options,
+	);
 
 	const SOUND_EVENTS = [
 		{
@@ -213,7 +223,8 @@
 
 					<Field.Field>
 						<Field.Label>Custom Sound</Field.Label>
-						{#if settings.value[`sound.custom.${soundEvent.key}`]}
+						<!-- If custom sounds are loaded in Record and if this sound has a custom blob loaded -->
+						{#if customSoundsQuery.data && customSoundsQuery.data[soundEvent.key] != null}
 							<Item.Root variant="muted" size="sm">
 								<Item.Media variant="icon">
 									<CheckCircle2Icon />
@@ -232,25 +243,26 @@
 									<Button
 										variant="outline"
 										size="sm"
-										onclick={async () => {
-											const { error } = await services.db.sounds.delete(
-												soundEvent.key,
-											);
-											if (error) {
-												rpc.notify.error.execute({
-													title: 'Failed to remove custom sound',
-													description: 'Please try again.',
-													action: { type: 'more-details', error },
-												});
-												return;
-											}
-											settings.updateKey(
-												`sound.custom.${soundEvent.key}`,
-												false,
-											);
-											rpc.notify.success.execute({
-												title: 'Custom sound removed',
-												description: `Reverted to default sound for ${soundEvent.label}.`,
+										disabled={deleteSoundMutation.isPending}
+										onclick={() => {
+											deleteSoundMutation.mutate(soundEvent.key, {
+												onSuccess: () => {
+													settings.updateKey(
+														`sound.custom.${soundEvent.key}`,
+														false,
+													);
+													rpc.notify.success.execute({
+														title: 'Custom sound removed',
+														description: `Reverted to default sound for ${soundEvent.label}.`,
+													});
+												},
+												onError: (error) => {
+													rpc.notify.error.execute({
+														title: 'Failed to remove custom sound',
+														description: 'Please try again.',
+														action: { type: 'more-details', error },
+													});
+												},
 											});
 										}}
 									>
@@ -274,25 +286,29 @@
 									const file = files[0];
 									if (!file) return;
 
-									const { error } = await services.db.sounds.save(
-										soundEvent.key,
-										file,
+									saveSoundMutation.mutate(
+										{ soundId: soundEvent.key, file },
+										{
+											onSuccess: () => {
+												settings.updateKey(
+													`sound.custom.${soundEvent.key}`,
+													true,
+												);
+												rpc.notify.success.execute({
+													title: 'Custom sound uploaded',
+													description: `Custom sound for ${soundEvent.label} has been saved.`,
+												});
+											},
+											onError: (error) => {
+												rpc.notify.error.execute({
+													title: 'Upload failed',
+													description:
+														'Failed to save custom sound. Please try again.',
+													action: { type: 'more-details', error },
+												});
+											},
+										},
 									);
-									if (error) {
-										rpc.notify.error.execute({
-											title: 'Upload failed',
-											description:
-												'Failed to save custom sound. Please try again.',
-											action: { type: 'more-details', error },
-										});
-										return;
-									}
-
-									settings.updateKey(`sound.custom.${soundEvent.key}`, true);
-									rpc.notify.success.execute({
-										title: 'Custom sound uploaded',
-										description: `Custom sound for ${soundEvent.label} has been saved.`,
-									});
 								}}
 								class="h-20"
 							>

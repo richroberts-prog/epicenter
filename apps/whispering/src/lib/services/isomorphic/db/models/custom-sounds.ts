@@ -1,10 +1,21 @@
 import type { WhisperingSoundNames } from '$lib/constants/sounds';
+import type { SerializedAudio } from './recordings';
 
-export interface CustomSound {
+/**
+ * How a custom sound is stored in IndexedDB (web platform).
+ *
+ * Desktop stores custom sounds as files in the custom-sounds directory,
+ * so this type is only used by the web implementation.
+ *
+ * The `id` is the sound name (e.g., 'manual-start'), which serves as
+ * the primary key. Audio is serialized to work around iOS Safari Blob
+ * storage issues (same pattern as recordings).
+ */
+export type CustomSound = {
 	id: WhisperingSoundNames;
-	serializedAudio: { arrayBuffer: ArrayBuffer; blobType: string };
+	serializedAudio: SerializedAudio;
 	fileName: string;
 	fileSize: number;
 	uploadedAt: string;
 	updatedAt: string;
-}
+};

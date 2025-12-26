@@ -1,56 +1,45 @@
 import type { WhisperingSoundNames } from '$lib/constants/sounds';
-import {
-	default as captureVadSoundSrc,
-	default as stopManualSoundSrc,
-} from './sound_ex_machina_Button_Blip.mp3';
-import startManualSoundSrc from './zapsplat_household_alarm_clock_button_press_12967.mp3';
-import stopVadSoundSrc from './zapsplat_household_alarm_clock_large_snooze_button_press_001_12968.mp3';
-import startVadSoundSrc from './zapsplat_household_alarm_clock_large_snooze_button_press_002_12969.mp3';
-import cancelSoundSrc from './zapsplat_multimedia_click_button_short_sharp_73510.mp3';
-import transformationCompleteSoundSrc from './zapsplat_multimedia_notification_alert_ping_bright_chime_001_93276.mp3';
-import transcriptionCompleteSoundSrc from './zapsplat_multimedia_ui_notification_classic_bell_synth_success_107505.mp3';
+import buttonBlipSrc from './sound_ex_machina_Button_Blip.mp3';
+import alarmButtonPressSrc from './zapsplat_household_alarm_clock_button_press_12967.mp3';
+import snoozeButtonPress1Src from './zapsplat_household_alarm_clock_large_snooze_button_press_001_12968.mp3';
+import snoozeButtonPress2Src from './zapsplat_household_alarm_clock_large_snooze_button_press_002_12969.mp3';
+import shortClickSrc from './zapsplat_multimedia_click_button_short_sharp_73510.mp3';
+import alertChimeSrc from './zapsplat_multimedia_notification_alert_ping_bright_chime_001_93276.mp3';
+import bellSynthSrc from './zapsplat_multimedia_ui_notification_classic_bell_synth_success_107505.mp3';
+
+/** Default bundled sound sources for each sound event */
+const DEFAULT_SOUNDS = {
+	'manual-start': alarmButtonPressSrc,
+	'manual-cancel': shortClickSrc,
+	'manual-stop': buttonBlipSrc,
+	'cpal-start': alarmButtonPressSrc,
+	'cpal-cancel': shortClickSrc,
+	'cpal-stop': buttonBlipSrc,
+	'vad-start': snoozeButtonPress2Src,
+	'vad-capture': buttonBlipSrc,
+	'vad-stop': snoozeButtonPress1Src,
+	transcriptionComplete: bellSynthSrc,
+	transformationComplete: alertChimeSrc,
+} as const satisfies Record<WhisperingSoundNames, string>;
 
 const createAudioElement = (src: string): HTMLAudioElement => {
 	const audio = new Audio(src);
-	// Set default volume - this will be updated dynamically when sounds are played
 	audio.volume = 0.5;
 	return audio;
 };
 
-// Default sound mappings
-const defaultSounds = {
-	'manual-start': startManualSoundSrc,
-	'manual-cancel': cancelSoundSrc,
-	'manual-stop': stopManualSoundSrc,
-	'cpal-start': startManualSoundSrc,
-	'cpal-cancel': cancelSoundSrc,
-	'cpal-stop': stopManualSoundSrc,
-	'vad-start': startVadSoundSrc,
-	'vad-capture': captureVadSoundSrc,
-	'vad-stop': stopVadSoundSrc,
-	transcriptionComplete: transcriptionCompleteSoundSrc,
-	transformationComplete: transformationCompleteSoundSrc,
-} satisfies Record<WhisperingSoundNames, string>;
+/** Pre-initialized audio elements for each sound event */
+export const audioElements = Object.fromEntries(
+	Object.entries(DEFAULT_SOUNDS).map(([name, src]) => [
+		name,
+		createAudioElement(src),
+	]),
+) as Record<WhisperingSoundNames, HTMLAudioElement>;
 
-export const audioElements = {
-	'manual-start': createAudioElement(defaultSounds['manual-start']),
-	'manual-cancel': createAudioElement(defaultSounds['manual-cancel']),
-	'manual-stop': createAudioElement(defaultSounds['manual-stop']),
-	'cpal-start': createAudioElement(defaultSounds['cpal-start']),
-	'cpal-cancel': createAudioElement(defaultSounds['cpal-cancel']),
-	'cpal-stop': createAudioElement(defaultSounds['cpal-stop']),
-	'vad-start': createAudioElement(defaultSounds['vad-start']),
-	'vad-capture': createAudioElement(defaultSounds['vad-capture']),
-	'vad-stop': createAudioElement(defaultSounds['vad-stop']),
-	transcriptionComplete: createAudioElement(
-		defaultSounds.transcriptionComplete,
-	),
-	transformationComplete: createAudioElement(
-		defaultSounds.transformationComplete,
-	),
-} satisfies Record<WhisperingSoundNames, HTMLAudioElement>;
-
-// Async function to resolve audio source (database or default)
+/**
+ * Resolves the audio source URL for a sound, checking for custom sounds first.
+ * Returns a custom sound URL if one exists in the db, otherwise falls back to default.
+ */
 const resolveAudioSource = async (
 	soundName: WhisperingSoundNames,
 ): Promise<string> => {
@@ -58,29 +47,23 @@ const resolveAudioSource = async (
 	const { settings } = await import('$lib/stores/settings.svelte');
 	const { services } = await import('$lib/services');
 
-	// Check if custom sound exists (from settings flag)
 	const hasCustomSound = settings.value[`sound.custom.${soundName}`];
 
 	if (hasCustomSound) {
-		try {
-			const { data: customBlob, error } =
-				await services.db.sounds.get(soundName);
+		const { data: customBlob, error } = await services.db.sounds.get(soundName);
 
-			if (!error && customBlob) {
-				const tempUrl = URL.createObjectURL(customBlob);
+		if (!error && customBlob) {
+			const tempUrl = URL.createObjectURL(customBlob);
+			setTimeout(() => URL.revokeObjectURL(tempUrl), 10000);
+			return tempUrl;
+		}
 
-				// Schedule cleanup after reasonable time
-				setTimeout(() => URL.revokeObjectURL(tempUrl), 10000);
-
-				return tempUrl;
-			}
-		} catch (error) {
+		if (error) {
 			console.warn(`Failed to load custom sound for ${soundName}:`, error);
 		}
 	}
 
-	// Fallback to default sound
-	return defaultSounds[soundName];
+	return DEFAULT_SOUNDS[soundName];
 };
 
 // Function to update audio element source (async)

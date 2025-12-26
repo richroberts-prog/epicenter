@@ -1,5 +1,9 @@
 import { Ok, type Result } from 'wellcrafted/result';
-import type { BuiltinSoundName, WhisperingSoundNames } from '$lib/constants/sounds';
+import {
+	BUILTIN_SOUND_NAMES,
+	type BuiltinSoundName,
+	type WhisperingSoundNames,
+} from '$lib/constants/sounds';
 import { defineMutation } from '$lib/query/client';
 import { services } from '$lib/services';
 import type { PlaySoundServiceError } from '$lib/services/isomorphic/sound';
@@ -10,23 +14,29 @@ const soundKeys = {
 	playSoundIfEnabled: ['sound', 'playSoundIfEnabled'] as const,
 } as const;
 
+const BUILTIN_SOUND_SET = new Set<string>(BUILTIN_SOUND_NAMES);
+
+function isBuiltinSound(soundName: string): soundName is BuiltinSoundName {
+	return BUILTIN_SOUND_SET.has(soundName);
+}
+
 export const sound = {
 	playSoundIfEnabled: defineMutation({
 		mutationKey: soundKeys.playSoundIfEnabled,
 		mutationFn: async (
 			soundName: WhisperingSoundNames,
 		): Promise<Result<void, PlaySoundServiceError>> => {
-			// For built-in sounds, check if enabled in settings
-			const playOnKey = `sound.playOn.${soundName}` as `sound.playOn.${BuiltinSoundName}`;
-			if (playOnKey in settings.value && !settings.value[playOnKey]) {
-				return Ok(undefined);
+			// For built-in sounds, check settings; for custom sounds, always play
+			if (isBuiltinSound(soundName)) {
+				if (!settings.value[`sound.playOn.${soundName}`]) {
+					return Ok(undefined);
+				}
+				const volume = settings.value[`sound.volume.${soundName}`];
+				return services.sound.playSound(soundName, { volume });
 			}
 
-			// Get volume from settings (for built-in sounds) or use default
-			const volumeKey = `sound.volume.${soundName}` as `sound.volume.${BuiltinSoundName}`;
-			const volume = volumeKey in settings.value ? settings.value[volumeKey] : 0.5;
-
-			return services.sound.playSound(soundName, { volume });
+			// Custom sounds use default volume
+			return services.sound.playSound(soundName, { volume: 0.5 });
 		},
 	}),
 };

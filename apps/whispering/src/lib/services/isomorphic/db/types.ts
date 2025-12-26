@@ -3,7 +3,6 @@ import type { Result } from 'wellcrafted/result';
 import type { Settings } from '$lib/settings';
 import type { WhisperingSoundNames } from '$lib/constants/sounds';
 import type {
-	CustomSoundMetadata,
 	Recording,
 	Transformation,
 	TransformationRun,
@@ -11,7 +10,6 @@ import type {
 	TransformationRunFailed,
 	TransformationStepRun,
 } from './models';
-
 export const { DbServiceError, DbServiceErr } =
 	createTaggedError('DbServiceError');
 export type DbServiceError = ReturnType<typeof DbServiceError>;
@@ -125,27 +123,19 @@ export type DbService = {
 		get(soundId: WhisperingSoundNames): Promise<Result<Blob | null, DbServiceError>>;
 
 		/**
-		 * Save a custom sound.
+		 * Save a custom sound. Metadata (fileName, fileSize, blobType, uploadedAt)
+		 * is inferred from the File object.
 		 * - Desktop: Saves audio file to custom-sounds directory
 		 * - Web: Saves to IndexedDB with serialized audio
 		 */
 		save(
 			soundId: WhisperingSoundNames,
-			audio: Blob,
-			metadata: CustomSoundMetadata,
+			file: File,
 		): Promise<Result<void, DbServiceError>>;
 
 		/**
 		 * Delete a custom sound.
 		 */
 		delete(soundId: WhisperingSoundNames): Promise<Result<void, DbServiceError>>;
-
-		/**
-		 * Get metadata for a custom sound without loading the audio.
-		 * Returns null if no custom sound exists.
-		 */
-		getMetadata(
-			soundId: WhisperingSoundNames,
-		): Promise<Result<CustomSoundMetadata | null, DbServiceError>>;
 	};
 };

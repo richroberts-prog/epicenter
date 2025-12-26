@@ -1027,36 +1027,32 @@ export function createDbServiceWeb({
 					},
 					catch: (error) =>
 						DbServiceErr({
-							message: 'Error getting custom sound from Dexie',
-							context: { soundId },
-							cause: error,
+							message: `Error getting custom sound from Dexie (soundId: ${soundId}): ${extractErrorMessage(error)}`,
 						}),
 				});
 			},
 
-			async save(soundId, audio, metadata) {
+			async save(soundId, file) {
 				return tryAsync({
 					try: async () => {
-						// Convert Blob to serialized format
-						const arrayBuffer = await audio.arrayBuffer();
-						const serializedAudio = { arrayBuffer, blobType: audio.type };
+						// Convert File to serialized format and extract metadata
+						const arrayBuffer = await file.arrayBuffer();
+						const now = new Date().toISOString();
 
 						const customSound: CustomSound = {
 							id: soundId,
-							serializedAudio,
-							fileName: metadata.fileName,
-							fileSize: metadata.fileSize,
-							uploadedAt: metadata.uploadedAt,
-							updatedAt: new Date().toISOString(),
+							serializedAudio: { arrayBuffer, blobType: file.type },
+							fileName: file.name,
+							fileSize: file.size,
+							uploadedAt: now,
+							updatedAt: now,
 						};
 
 						await db.customSounds.put(customSound);
 					},
 					catch: (error) =>
 						DbServiceErr({
-							message: 'Error saving custom sound to Dexie',
-							context: { soundId },
-							cause: error,
+							message: `Error saving custom sound to Dexie (soundId: ${soundId}): ${extractErrorMessage(error)}`,
 						}),
 				});
 			},
@@ -1066,34 +1062,10 @@ export function createDbServiceWeb({
 					try: () => db.customSounds.delete(soundId),
 					catch: (error) =>
 						DbServiceErr({
-							message: 'Error deleting custom sound from Dexie',
-							context: { soundId },
-							cause: error,
+							message: `Error deleting custom sound from Dexie (soundId: ${soundId}): ${extractErrorMessage(error)}`,
 						}),
 				});
 			},
-
-			async getMetadata(soundId) {
-				return tryAsync({
-					try: async () => {
-						const customSound = await db.customSounds.get(soundId);
-						if (!customSound) return null;
-
-						return {
-							fileName: customSound.fileName,
-							fileSize: customSound.fileSize,
-							blobType: customSound.serializedAudio.blobType,
-							uploadedAt: customSound.uploadedAt,
-						};
-					},
-					catch: (error) =>
-						DbServiceErr({
-							message: 'Error getting custom sound metadata from Dexie',
-							context: { soundId },
-							cause: error,
-						}),
-				});
-			},
-		}, // End of sounds namespace
+		},
 	};
 }

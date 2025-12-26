@@ -20,6 +20,9 @@ import { Transformation, TransformationRun } from './models';
 import type { DbService } from './types';
 import { DbServiceErr } from './types';
 
+// Supported audio file extensions for custom sounds
+const SUPPORTED_MEDIA_EXTENSIONS = ['mp3', 'ogg', 'wav', 'webm', 'm4a', 'aac', 'flac'] as const;
+
 /**
  * Schema validator for Recording front matter (everything except transcribedText)
  */
@@ -1040,21 +1043,19 @@ export function createFileSystemDb(): DbService {
 
 						// Read file and convert to Blob
 						const { data: blob, error } =
-							await services.fs.pathToBlob(audioPath);
+							await FsServiceLive.pathToBlob(audioPath);
 						if (error) throw error;
 
 						return blob;
 					},
 					catch: (error) =>
 						DbServiceErr({
-							message: 'Error getting custom sound from file system',
-							context: { soundId },
-							cause: error,
+							message: `Error getting custom sound from file system (soundId: ${soundId}): ${extractErrorMessage(error)}`,
 						}),
 				});
 			},
 
-			async save(soundId, audio, metadata) {
+			async save(soundId, file) {
 				return tryAsync({
 					try: async () => {
 						const soundsPath = await PATHS.DB.CUSTOM_SOUNDS();
@@ -1070,30 +1071,38 @@ export function createFileSystemDb(): DbService {
 						if (existingAudioPath) {
 							await remove(existingAudioPath);
 						}
-						const existingMetaPath = await join(soundsPath, `${soundId}.json`);
+						const existingMetaPath = await join(soundsPath, `${soundId}.md`);
 						if (await exists(existingMetaPath)) {
 							await remove(existingMetaPath);
 						}
 
 						// 1. Write audio file
-						const extension = mime.getExtension(audio.type) ?? 'bin';
+						const extension = mime.getExtension(file.type) ?? 'bin';
 						const audioPath = await join(
 							soundsPath,
 							`${soundId}.${extension}`,
 						);
-						const arrayBuffer = await audio.arrayBuffer();
+						const arrayBuffer = await file.arrayBuffer();
 						await writeFile(audioPath, new Uint8Array(arrayBuffer));
 
-						// 2. Write metadata file
-						const metaPath = await join(soundsPath, `${soundId}.json`);
-						const metaContent = JSON.stringify(metadata, null, 2);
-						await writeTextFile(metaPath, metaContent);
+						// 2. Write metadata file as markdown with YAML front matter
+						const metaPath = await join(soundsPath, `${soundId}.md`);
+						const metadata = {
+							fileName: file.name,
+							fileSize: file.size,
+							blobType: file.type,
+							uploadedAt: new Date().toISOString(),
+						};
+						const mdContent = matter.stringify('', metadata);
+
+						// Atomic write
+						const tmpPath = `${metaPath}.tmp`;
+						await writeTextFile(tmpPath, mdContent);
+						await rename(tmpPath, metaPath);
 					},
 					catch: (error) =>
 						DbServiceErr({
-							message: 'Error saving custom sound to file system',
-							context: { soundId },
-							cause: error,
+							message: `Error saving custom sound to file system (soundId: ${soundId}): ${extractErrorMessage(error)}`,
 						}),
 				});
 			},
@@ -1110,39 +1119,18 @@ export function createFileSystemDb(): DbService {
 						}
 
 						// Delete metadata file
-						const metaPath = await join(soundsPath, `${soundId}.json`);
+						const metaPath = await join(soundsPath, `${soundId}.md`);
 						if (await exists(metaPath)) {
 							await remove(metaPath);
 						}
 					},
 					catch: (error) =>
 						DbServiceErr({
-							message: 'Error deleting custom sound from file system',
-							context: { soundId },
-							cause: error,
+							message: `Error deleting custom sound from file system (soundId: ${soundId}): ${extractErrorMessage(error)}`,
 						}),
 				});
 			},
 
-			async getMetadata(soundId) {
-				return tryAsync({
-					try: async () => {
-						const soundsPath = await PATHS.DB.CUSTOM_SOUNDS();
-						const metaPath = await join(soundsPath, `${soundId}.json`);
-
-						if (!(await exists(metaPath))) return null;
-
-						const content = await readTextFile(metaPath);
-						return JSON.parse(content);
-					},
-					catch: (error) =>
-						DbServiceErr({
-							message: 'Error getting custom sound metadata from file system',
-							context: { soundId },
-							cause: error,
-						}),
-				});
-			},
 		},
 	};
 }

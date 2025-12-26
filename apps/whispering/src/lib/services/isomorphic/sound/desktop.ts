@@ -1,23 +1,17 @@
 import { extractErrorMessage } from 'wellcrafted/error';
 import { tryAsync } from 'wellcrafted/result';
 import type { PlaySoundService } from '.';
-import { audioElements, updateAudioSource } from './assets';
+import { prepareAudioForPlayback } from './assets';
 import { PlaySoundServiceErr } from './types';
-import { settings } from '$lib/stores/settings.svelte';
 
 export function createPlaySoundServiceDesktop(): PlaySoundService {
 	return {
-		playSound: async (soundName) =>
+		playSound: async (soundName, { volume, hasCustomSound }) =>
 			tryAsync({
 				try: async () => {
-					// Use async audio source resolution (IndexedDB-based)
-					await updateAudioSource(soundName);
-					
-					const audioElement = audioElements[soundName];
-					// Apply individual volume setting for this specific sound
-					const individualVolume = settings.value[`sound.volume.${soundName}` as keyof typeof settings.value] as number;
-					audioElement.volume = individualVolume ?? 0.5;
-					await audioElement.play();
+					const audio = await prepareAudioForPlayback(soundName, hasCustomSound);
+					audio.volume = volume;
+					await audio.play();
 				},
 				catch: (error) =>
 					PlaySoundServiceErr({

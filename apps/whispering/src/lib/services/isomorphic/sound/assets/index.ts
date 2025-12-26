@@ -8,7 +8,7 @@ import alertChimeSrc from './zapsplat_multimedia_notification_alert_ping_bright_
 import bellSynthSrc from './zapsplat_multimedia_ui_notification_classic_bell_synth_success_107505.mp3';
 
 /** Default bundled sound sources for each sound event */
-const DEFAULT_SOUNDS = {
+export const DEFAULT_SOUNDS = {
 	'manual-start': alarmButtonPressSrc,
 	'manual-cancel': shortClickSrc,
 	'manual-stop': buttonBlipSrc,
@@ -22,58 +22,83 @@ const DEFAULT_SOUNDS = {
 	transformationComplete: alertChimeSrc,
 } as const satisfies Record<WhisperingSoundNames, string>;
 
-const createAudioElement = (src: string): HTMLAudioElement => {
-	const audio = new Audio(src);
-	audio.volume = 0.5;
-	return audio;
-};
+/** Cached audio elements for lazy initialization */
+const audioCache = new Map<WhisperingSoundNames, HTMLAudioElement>();
 
-/** Pre-initialized audio elements for each sound event */
-export const audioElements = Object.fromEntries(
-	Object.entries(DEFAULT_SOUNDS).map(([name, src]) => [
-		name,
-		createAudioElement(src),
-	]),
-) as Record<WhisperingSoundNames, HTMLAudioElement>;
+/** Active blob URLs that need cleanup */
+const activeBlobUrls = new Map<WhisperingSoundNames, string>();
 
 /**
- * Resolves the audio source URL for a sound, checking for custom sounds first.
- * Returns a custom sound URL if one exists in the db, otherwise falls back to default.
+ * Gets or creates a cached audio element for a sound.
+ * Uses lazy initialization - audio elements are only created when first needed.
  */
-const resolveAudioSource = async (
+export function getOrCreateAudioElement(
 	soundName: WhisperingSoundNames,
-): Promise<string> => {
+): HTMLAudioElement {
+	const cached = audioCache.get(soundName);
+	if (cached) return cached;
+
+	const audio = new Audio(DEFAULT_SOUNDS[soundName]);
+	audio.preload = 'auto';
+	audioCache.set(soundName, audio);
+	return audio;
+}
+
+/**
+ * Resolves the audio source for a sound, checking for custom sounds first.
+ * If hasCustomSound is true, attempts to load from IndexedDB.
+ * Otherwise, returns the default bundled sound.
+ */
+export async function resolveAudioSource(
+	soundName: WhisperingSoundNames,
+	hasCustomSound: boolean,
+): Promise<string> {
+	if (!hasCustomSound) {
+		return DEFAULT_SOUNDS[soundName];
+	}
+
 	// Import here to avoid circular dependencies
-	const { settings } = await import('$lib/stores/settings.svelte');
 	const { services } = await import('$lib/services');
+	const { data: customBlob, error } = await services.db.sounds.get(soundName);
 
-	const hasCustomSound = settings.value[`sound.custom.${soundName}`];
-
-	if (hasCustomSound) {
-		const { data: customBlob, error } = await services.db.sounds.get(soundName);
-
-		if (!error && customBlob) {
-			const tempUrl = URL.createObjectURL(customBlob);
-			setTimeout(() => URL.revokeObjectURL(tempUrl), 10000);
-			return tempUrl;
-		}
-
+	if (error || !customBlob) {
 		if (error) {
 			console.warn(`Failed to load custom sound for ${soundName}:`, error);
 		}
+		return DEFAULT_SOUNDS[soundName];
 	}
 
-	return DEFAULT_SOUNDS[soundName];
-};
-
-// Function to update audio element source (async)
-export const updateAudioSource = async (soundName: WhisperingSoundNames) => {
-	const audioElement = audioElements[soundName];
-	const newSrc = await resolveAudioSource(soundName);
-
-	if (audioElement.src !== newSrc) {
-		audioElement.src = newSrc;
-		// Preload the new sound
-		audioElement.load();
+	// Clean up previous blob URL for this sound if it exists
+	const previousUrl = activeBlobUrls.get(soundName);
+	if (previousUrl) {
+		URL.revokeObjectURL(previousUrl);
 	}
-};
+
+	const newUrl = URL.createObjectURL(customBlob);
+	activeBlobUrls.set(soundName, newUrl);
+
+	return newUrl;
+}
+
+/**
+ * Updates the audio element source if needed and prepares it for playback.
+ * Handles both custom sounds (from IndexedDB) and default bundled sounds.
+ */
+export async function prepareAudioForPlayback(
+	soundName: WhisperingSoundNames,
+	hasCustomSound: boolean,
+): Promise<HTMLAudioElement> {
+	const audio = getOrCreateAudioElement(soundName);
+	const newSrc = await resolveAudioSource(soundName, hasCustomSound);
+
+	// Only reload if the source has changed
+	if (audio.src !== newSrc) {
+		audio.src = newSrc;
+		audio.load();
+	}
+
+	// Reset to beginning for replay
+	audio.currentTime = 0;
+
+	return audio;
+}

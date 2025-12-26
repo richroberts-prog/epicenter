@@ -37,67 +37,6 @@ const audioCache = new Map<WhisperingSoundNames, HTMLAudioElement>();
 const activeBlobUrls = new Map<WhisperingSoundNames, string>();
 
 /**
- * Checks if a sound name is a built-in sound with a default audio file.
- */
-function isBuiltinSound(soundName: string): soundName is BuiltinSoundName {
-	return BUILTIN_SOUND_SET.has(soundName);
-}
-
-/**
- * Gets or creates a cached audio element for a sound.
- * Uses lazy initialization - audio elements are only created when first needed.
- */
-function getOrCreateAudioElement(
-	soundName: WhisperingSoundNames,
-	initialSrc?: string,
-): HTMLAudioElement {
-	const cached = audioCache.get(soundName);
-	if (cached) return cached;
-
-	const src =
-		initialSrc ?? (isBuiltinSound(soundName) ? DEFAULT_SOUNDS[soundName] : '');
-	const audio = new Audio(src);
-	audio.preload = 'auto';
-	audioCache.set(soundName, audio);
-	return audio;
-}
-
-/**
- * Resolves the audio source for a sound.
- * For built-in sounds, returns the default bundled file.
- * For custom sounds, loads from IndexedDB.
- */
-async function resolveAudioSource(
-	soundName: WhisperingSoundNames,
-): Promise<string | null> {
-	// Built-in sounds use default bundled files
-	if (isBuiltinSound(soundName)) {
-		return DEFAULT_SOUNDS[soundName];
-	}
-
-	// Custom sounds are loaded from IndexedDB
-	const { data: customBlob, error } = await DbServiceLive.sounds.get(soundName);
-
-	if (error || !customBlob) {
-		if (error) {
-			console.warn(`Failed to load custom sound for ${soundName}:`, error);
-		}
-		return null;
-	}
-
-	// Clean up previous blob URL for this sound if it exists
-	const previousUrl = activeBlobUrls.get(soundName);
-	if (previousUrl) {
-		URL.revokeObjectURL(previousUrl);
-	}
-
-	const newUrl = URL.createObjectURL(customBlob);
-	activeBlobUrls.set(soundName, newUrl);
-
-	return newUrl;
-}
-
-/**
  * Prepares an audio element for playback.
  * For built-in sounds, uses bundled audio files.
  * For custom sounds, loads from IndexedDB.
@@ -106,22 +45,42 @@ async function resolveAudioSource(
 export async function prepareAudioForPlayback(
 	soundName: WhisperingSoundNames,
 ): Promise<HTMLAudioElement | null> {
-	const newSrc = await resolveAudioSource(soundName);
+	// Resolve audio source
+	let src: string | null;
+	if (BUILTIN_SOUND_SET.has(soundName)) {
+		src = DEFAULT_SOUNDS[soundName as BuiltinSoundName];
+	} else {
+		// Custom sounds are loaded from IndexedDB
+		const { data: customBlob, error } = await DbServiceLive.sounds.get(soundName);
+		if (error || !customBlob) {
+			if (error) {
+				console.warn(`Failed to load custom sound for ${soundName}:`, error);
+			}
+			return null;
+		}
 
-	if (!newSrc) {
-		return null;
+		// Clean up previous blob URL for this sound if it exists
+		const previousUrl = activeBlobUrls.get(soundName);
+		if (previousUrl) {
+			URL.revokeObjectURL(previousUrl);
+		}
+
+		src = URL.createObjectURL(customBlob);
+		activeBlobUrls.set(soundName, src);
 	}
 
-	const audio = getOrCreateAudioElement(soundName, newSrc);
-
-	// Only reload if the source has changed
-	if (audio.src !== newSrc) {
-		audio.src = newSrc;
+	// Get or create cached audio element
+	let audio = audioCache.get(soundName);
+	if (!audio) {
+		audio = new Audio(src);
+		audio.preload = 'auto';
+		audioCache.set(soundName, audio);
+	} else if (audio.src !== src) {
+		// Update source if it changed
+		audio.src = src;
 		audio.load();
 	}
 
-	// Reset to beginning for replay
 	audio.currentTime = 0;
-
 	return audio;
 }

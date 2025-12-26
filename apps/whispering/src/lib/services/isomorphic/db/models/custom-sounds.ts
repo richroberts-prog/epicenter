@@ -14,8 +14,4 @@ import type { SerializedAudio } from './recordings';
 export type CustomSound = {
 	id: WhisperingSoundNames;
 	serializedAudio: SerializedAudio;
-	fileName: string;
-	fileSize: number;
-	uploadedAt: string;
-	updatedAt: string;
 };

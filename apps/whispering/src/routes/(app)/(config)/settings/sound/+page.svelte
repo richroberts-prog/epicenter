@@ -7,7 +7,6 @@
 	import { Switch } from '@epicenter/ui/switch';
 	import { Slider } from '@epicenter/ui/slider';
 	import CheckCircle2Icon from '@lucide/svelte/icons/check-circle-2';
-	import LoaderIcon from '@lucide/svelte/icons/loader';
 	import PlayIcon from '@lucide/svelte/icons/play';
 	import UploadIcon from '@lucide/svelte/icons/upload';
 	import XIcon from '@lucide/svelte/icons/x';
@@ -22,10 +21,10 @@
 	import OpenFolderButton from '$lib/components/OpenFolderButton.svelte';
 	import { PATHS } from '$lib/constants/paths';
 
-	// Query for all custom sounds - loads all blobs in parallel on mount
+	// Loads all custom sound blobs in parallel on mount.
+	// Returns Record<SoundName, Blob | null> where null means no custom sound exists.
 	const customSoundsQuery = createQuery(() => rpc.db.sounds.getAll.options);
 
-	// Mutations for save and delete operations
 	const saveSoundMutation = createMutation(() => rpc.db.sounds.save.options);
 	const deleteSoundMutation = createMutation(
 		() => rpc.db.sounds.delete.options,
@@ -223,8 +222,8 @@
 
 					<Field.Field>
 						<Field.Label>Custom Sound</Field.Label>
-						<!-- If custom sounds are loaded in Record and if this sound has a custom blob loaded -->
-						{#if customSoundsQuery.data && customSoundsQuery.data[soundEvent.key] != null}
+						<!-- Show uploaded sound if blob exists, otherwise show upload dropzone -->
+						{#if customSoundsQuery.data?.[soundEvent.key]}
 							<Item.Root variant="muted" size="sm">
 								<Item.Media variant="icon">
 									<CheckCircle2Icon />

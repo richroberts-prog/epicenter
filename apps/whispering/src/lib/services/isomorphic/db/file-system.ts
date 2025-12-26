@@ -835,10 +835,10 @@ export function createFileSystemDb(): DbService {
 							status: 'running',
 						} as const;
 
-						const updatedRun: TransformationRun = {
+						const updatedRun = {
 							...run,
 							stepRuns: [...run.stepRuns, newTransformationStepRun],
-						};
+						} satisfies TransformationRun;
 
 						// Update .md file
 						const mdContent = matter.stringify('', updatedRun);
@@ -908,7 +908,7 @@ export function createFileSystemDb(): DbService {
 
 						const now = new Date().toISOString();
 
-						const updatedRun: TransformationRun = {
+						const updatedRun = {
 							...run,
 							stepRuns: run.stepRuns.map((stepRun) => {
 								if (stepRun.id === stepRunId) {
@@ -921,7 +921,7 @@ export function createFileSystemDb(): DbService {
 								}
 								return stepRun;
 							}),
-						};
+						} satisfies TransformationRun;
 
 						// Update .md file
 						const mdContent = matter.stringify('', updatedRun);

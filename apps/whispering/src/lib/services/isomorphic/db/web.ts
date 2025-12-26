@@ -867,10 +867,10 @@ export function createDbServiceWeb({
 					status: 'running',
 				} satisfies TransformationStepRunRunning;
 
-				const updatedRun: TransformationRun = {
+				const updatedRun = {
 					...run,
 					stepRuns: [...run.stepRuns, newTransformationStepRun],
-				};
+				} satisfies TransformationRun;
 
 				const { error: addStepRunToTransformationRunError } = await tryAsync({
 					try: () => db.transformationRuns.put(updatedRun),
@@ -889,24 +889,24 @@ export function createDbServiceWeb({
 				const now = new Date().toISOString();
 
 				// Create the failed transformation run
-				const failedRun: TransformationRunFailed = {
+				const failedRun = {
 					...run,
 					status: 'failed',
 					completedAt: now,
 					error,
 					stepRuns: run.stepRuns.map((stepRun) => {
 						if (stepRun.id === stepRunId) {
-							const failedStepRun: TransformationStepRunFailed = {
+							const failedStepRun = {
 								...stepRun,
 								status: 'failed',
 								completedAt: now,
 								error,
-							};
+							} satisfies TransformationStepRunFailed;
 							return failedStepRun;
 						}
 						return stepRun;
 					}),
-				};
+				} satisfies TransformationRunFailed;
 
 				const { error: updateTransformationStepRunError } = await tryAsync({
 					try: () => db.transformationRuns.put(failedRun),
@@ -925,21 +925,21 @@ export function createDbServiceWeb({
 				const now = new Date().toISOString();
 
 				// Create updated transformation run with the new step runs
-				const updatedRun: TransformationRun = {
+				const updatedRun = {
 					...run,
 					stepRuns: run.stepRuns.map((stepRun) => {
 						if (stepRun.id === stepRunId) {
-							const completedStepRun: TransformationStepRunCompleted = {
+							const completedStepRun = {
 								...stepRun,
 								status: 'completed',
 								completedAt: now,
 								output,
-							};
+							} satisfies TransformationStepRunCompleted;
 							return completedStepRun;
 						}
 						return stepRun;
 					}),
-				};
+				} satisfies TransformationRun;
 
 				const { error: updateTransformationStepRunError } = await tryAsync({
 					try: () => db.transformationRuns.put(updatedRun),
@@ -958,12 +958,12 @@ export function createDbServiceWeb({
 				const now = new Date().toISOString();
 
 				// Create the completed transformation run
-				const completedRun: TransformationRunCompleted = {
+				const completedRun = {
 					...run,
 					status: 'completed',
 					completedAt: now,
 					output,
-				};
+				} satisfies TransformationRunCompleted;
 
 				const { error: updateTransformationStepRunError } = await tryAsync({
 					try: () => db.transformationRuns.put(completedRun),

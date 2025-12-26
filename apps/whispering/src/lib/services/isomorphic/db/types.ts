@@ -67,6 +67,11 @@ export type DbService = {
 	transformations: {
 		getAll(): Promise<Result<Transformation[], DbServiceError>>;
 		getById(id: string): Promise<Result<Transformation | null, DbServiceError>>;
+		/**
+		 * Create one or more transformations.
+		 * Bulk operations are all-or-nothing: if any insert fails,
+		 * the entire operation fails and no transformations are created.
+		 */
 		create(
 			transformation: Transformation | Transformation[],
 		): Promise<Result<void, DbServiceError>>;
@@ -90,6 +95,11 @@ export type DbService = {
 		getByRecordingId(
 			recordingId: string,
 		): Promise<Result<TransformationRun[], DbServiceError>>;
+		/**
+		 * Create one or more transformation runs.
+		 * Bulk operations are all-or-nothing: if any insert fails,
+		 * the entire operation fails and no runs are created.
+		 */
 		create(
 			run: TransformationRun | TransformationRun[],
 		): Promise<Result<void, DbServiceError>>;

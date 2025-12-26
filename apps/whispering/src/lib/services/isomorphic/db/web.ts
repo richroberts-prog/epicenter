@@ -1035,19 +1035,11 @@ export function createDbServiceWeb({
 			async save(soundId, file) {
 				return tryAsync({
 					try: async () => {
-						// Convert File to serialized format and extract metadata
 						const arrayBuffer = await file.arrayBuffer();
-						const now = new Date().toISOString();
-
 						const customSound: CustomSound = {
 							id: soundId,
 							serializedAudio: { arrayBuffer, blobType: file.type },
-							fileName: file.name,
-							fileSize: file.size,
-							uploadedAt: now,
-							updatedAt: now,
 						};
-
 						await db.customSounds.put(customSound);
 					},
 					catch: (error) =>

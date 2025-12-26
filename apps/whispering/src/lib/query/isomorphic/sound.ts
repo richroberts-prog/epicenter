@@ -16,9 +16,6 @@ export const sound = {
 		mutationFn: async (
 			soundName: SoundName,
 		): Promise<Result<void, PlaySoundServiceError>> => {
-			if (!settings.value[`sound.playOn.${soundName}`]) {
-				return Ok(undefined);
-			}
 			const volume = settings.value[`sound.volume.${soundName}`];
 			return services.sound.playSound(soundName, { volume });
 		},

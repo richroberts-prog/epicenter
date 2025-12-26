@@ -16,6 +16,11 @@ export const sound = {
 		mutationFn: async (
 			soundName: SoundName,
 		): Promise<Result<void, PlaySoundServiceError>> => {
+			const isSoundEnabled = settings.value[`sound.playOn.${soundName}`];
+
+			// Skip playback if user has disabled this sound in settings
+			if (!isSoundEnabled) return Ok(undefined);
+
 			const volume = settings.value[`sound.volume.${soundName}`];
 			return services.sound.playSound(soundName, { volume });
 		},

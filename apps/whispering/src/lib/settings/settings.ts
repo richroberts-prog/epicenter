@@ -30,7 +30,6 @@
  */
 
 import { type } from 'arktype';
-import type { Command } from '$lib/commands';
 import {
 	BITRATES_KBPS,
 	DEFAULT_BITRATE_KBPS,
@@ -38,20 +37,19 @@ import {
 } from '$lib/constants/audio';
 import { CommandOrAlt, CommandOrControl } from '$lib/constants/keyboard';
 import { SUPPORTED_LANGUAGES } from '$lib/constants/languages';
-import type { WhisperingSoundNames } from '$lib/constants/sounds';
-import { ALWAYS_ON_TOP_MODES } from '$lib/constants/ui';
+import { ALWAYS_ON_TOP_MODES, LAYOUT_MODES } from '$lib/constants/ui';
 import {
 	FFMPEG_DEFAULT_COMPRESSION_OPTIONS,
 	FFMPEG_DEFAULT_GLOBAL_OPTIONS,
 	FFMPEG_DEFAULT_INPUT_OPTIONS,
 	FFMPEG_DEFAULT_OUTPUT_OPTIONS,
-} from '$lib/services/recorder/ffmpeg';
-import type { DeepgramModel } from '$lib/services/transcription/cloud/deepgram';
-import type { ElevenLabsModel } from '$lib/services/transcription/cloud/elevenlabs';
-import type { GroqModel } from '$lib/services/transcription/cloud/groq';
-import type { MistralModel } from '$lib/services/transcription/cloud/mistral';
-import type { OpenAIModel } from '$lib/services/transcription/cloud/openai';
-import { TRANSCRIPTION_SERVICE_IDS } from '$lib/services/transcription/registry';
+} from '$lib/services/desktop/recorder/ffmpeg';
+import type { DeepgramModel } from '$lib/services/isomorphic/transcription/cloud/deepgram';
+import type { ElevenLabsModel } from '$lib/services/isomorphic/transcription/cloud/elevenlabs';
+import type { GroqModel } from '$lib/services/isomorphic/transcription/cloud/groq';
+import type { MistralModel } from '$lib/services/isomorphic/transcription/cloud/mistral';
+import type { OpenAIModel } from '$lib/services/isomorphic/transcription/cloud/openai';
+import { TRANSCRIPTION_SERVICE_IDS } from '$lib/services/isomorphic/transcription/registry';
 import { asDeviceIdentifier, type DeviceIdentifier } from '$lib/services/types';
 
 // Helper to transform device identifiers
@@ -142,6 +140,14 @@ export const Settings = type({
 		.enumerated(...ALWAYS_ON_TOP_MODES)
 		.default('Never'),
 
+	// UI settings
+	/**
+	 * Navigation layout mode.
+	 * - `sidebar`: Uses the collapsible vertical sidebar. Nav items show on home, hidden on config pages.
+	 * - `nav-items`: Uses inline header navigation. No sidebar, nav items visible on all pages.
+	 */
+	'ui.layoutMode': type.enumerated(...LAYOUT_MODES).default('sidebar'),
+
 	'database.recordingRetentionStrategy': type
 		.enumerated('keep-forever', 'limit-count')
 		.default('keep-forever'),
@@ -198,7 +204,7 @@ export const Settings = type({
 
 	'transcription.selectedTranscriptionService': type
 		.enumerated(...TRANSCRIPTION_SERVICE_IDS)
-		.default('whispercpp'),
+		.default('moonshine'),
 	// Shared settings in transcription
 	'transcription.outputLanguage': type
 		.enumerated(...SUPPORTED_LANGUAGES)
@@ -233,6 +239,7 @@ export const Settings = type({
 	),
 	'transcription.whispercpp.modelPath': "string = ''",
 	'transcription.parakeet.modelPath': "string = ''",
+	'transcription.moonshine.modelPath': "string = ''",
 
 	'transformations.selectedTransformationId': 'string | null = null',
 
@@ -252,6 +259,10 @@ export const Settings = type({
 		'apiKeys.openrouter': "string = ''",
 		'apiKeys.custom': "string = ''",
 	} as const satisfies Record<`apiKeys.${string}`, string>),
+
+	// API endpoint overrides (empty string = use default endpoint)
+	'apiEndpoints.openai': "string = ''",
+	'apiEndpoints.groq': "string = ''",
 
 	// Analytics settings
 	'analytics.enabled': 'boolean = true',
@@ -410,6 +421,15 @@ export function parseStoredSettings(storedValue: unknown): Settings {
 			migrated['transformation.writeToCursorOnSuccess'] =
 				migrated['transformation.clipboard.pasteOnSuccess'];
 			delete migrated['transformation.clipboard.pasteOnSuccess'];
+		}
+
+		// Migrate old navigation boolean settings to new layoutMode enum
+		if ('ui.showSidebar' in migrated || 'ui.showNavItems' in migrated) {
+			const showSidebar = migrated['ui.showSidebar'] ?? true;
+			// If sidebar was enabled, use sidebar mode; otherwise use nav-items mode
+			migrated['ui.layoutMode'] = showSidebar ? 'sidebar' : 'nav-items';
+			delete migrated['ui.showSidebar'];
+			delete migrated['ui.showNavItems'];
 		}
 
 		storedValue = migrated;

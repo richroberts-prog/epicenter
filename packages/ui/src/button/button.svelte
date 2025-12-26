@@ -20,7 +20,6 @@
 					'bg-secondary text-secondary-foreground shadow-xs hover:bg-secondary/80',
 				ghost:
 					'hover:bg-accent hover:text-accent-foreground dark:hover:bg-accent/50',
-				link: 'text-primary underline-offset-4 hover:underline',
 			},
 			size: {
 				default: 'h-9 px-4 py-2 has-[>svg]:px-3',
@@ -44,10 +43,18 @@
 		WithElementRef<HTMLAnchorAttributes> & {
 			variant?: ButtonVariant;
 			size?: ButtonSize;
+			/**
+			 * Tooltip text to display on hover.
+			 * Requires a parent `<Tooltip.Provider>` in the component tree.
+			 * Wrap your app root with `<Tooltip.Provider>` to enable tooltip coordination.
+			 */
+			tooltip?: string;
 		};
 </script>
 
 <script lang="ts">
+	import * as Tooltip from '#/tooltip';
+
 	let {
 		class: className,
 		variant = 'default',
@@ -57,32 +64,56 @@
 		type = 'button',
 		disabled,
 		children,
+		tooltip,
 		...restProps
 	}: ButtonProps = $props();
 </script>
 
-{#if href}
-	<a
-		bind:this={ref}
-		data-slot="button"
-		class={cn(buttonVariants({ variant, size }), className)}
-		href={disabled ? undefined : href}
-		aria-disabled={disabled}
-		role={disabled ? 'link' : undefined}
-		tabindex={disabled ? -1 : undefined}
-		{...restProps}
-	>
-		{@render children?.()}
-	</a>
+{#snippet buttonContent(tooltipProps?: Record<string, unknown>)}
+	{#if href}
+		<a
+			bind:this={ref}
+			data-slot="button"
+			class={cn(buttonVariants({ variant, size }), className)}
+			href={disabled ? undefined : href}
+			aria-disabled={disabled}
+			role={disabled ? 'link' : undefined}
+			tabindex={disabled ? -1 : undefined}
+			{...tooltipProps}
+			{...restProps}
+		>
+			{@render children?.()}
+		</a>
+	{:else}
+		<button
+			bind:this={ref}
+			data-slot="button"
+			class={cn(buttonVariants({ variant, size }), className)}
+			{type}
+			{disabled}
+			{...tooltipProps}
+			{...restProps}
+		>
+			{@render children?.()}
+		</button>
+	{/if}
+{/snippet}
+
+<!--
+	When using the tooltip prop, this component requires a parent Tooltip.Provider.
+	Wrap your app root with <Tooltip.Provider> to enable tooltip coordination.
+-->
+{#if tooltip}
+	<Tooltip.Root>
+		<Tooltip.Trigger>
+			{#snippet child({ props })}
+				{@render buttonContent(props)}
+			{/snippet}
+		</Tooltip.Trigger>
+		<Tooltip.Content class="max-w-xs text-center">
+			{tooltip}
+		</Tooltip.Content>
+	</Tooltip.Root>
 {:else}
-	<button
-		bind:this={ref}
-		data-slot="button"
-		class={cn(buttonVariants({ variant, size }), className)}
-		{type}
-		{disabled}
-		{...restProps}
-	>
-		{@render children?.()}
-	</button>
+	{@render buttonContent()}
 {/if}

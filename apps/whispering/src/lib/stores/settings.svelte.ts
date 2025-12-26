@@ -1,19 +1,16 @@
-import { createPersistedState } from '@repo/svelte-utils';
+import { createPersistedState } from '@epicenter/svelte-utils';
 import { nanoid } from 'nanoid/non-secure';
 import { extractErrorMessage } from 'wellcrafted/error';
-import { Ok, partitionResults, type Result } from 'wellcrafted/result';
+import { Ok, partitionResults } from 'wellcrafted/result';
 import { commands } from '$lib/commands';
 import type { RecordingMode } from '$lib/constants/audio';
 import { rpc } from '$lib/query';
-import { recorderService } from '$lib/query/recorder';
-import * as services from '$lib/services';
-import type { RecorderServiceError } from '$lib/services/recorder';
-import type { VadRecorderServiceError } from '$lib/services/vad-recorder';
 import {
 	getDefaultSettings,
 	parseStoredSettings,
 	Settings,
 } from '$lib/settings/settings';
+import { vadRecorder } from '$lib/stores/vad-recorder.svelte';
 import {
 	syncGlobalShortcutsWithSettings,
 	syncLocalShortcutsWithSettings,
@@ -179,7 +176,7 @@ export const settings = (() => {
  * @returns Object containing array of errors that occurred while stopping recordings
  */
 async function stopAllRecordingModesExcept(modeToKeep: RecordingMode) {
-	const { data: recorderState } = await recorderService().getRecorderState();
+	const { data: recorderState } = await rpc.recorder.getRecorderState.fetch();
 
 	// Each recording mode with its check and stop logic
 	const recordingModes = [
@@ -190,7 +187,7 @@ async function stopAllRecordingModesExcept(modeToKeep: RecordingMode) {
 		},
 		{
 			mode: 'vad' as const,
-			isActive: () => services.vad.getVadState() !== 'IDLE',
+			isActive: () => vadRecorder.state !== 'IDLE',
 			stop: () => rpc.commands.stopVadRecording.execute(),
 		},
 	] satisfies {
@@ -211,10 +208,7 @@ async function stopAllRecordingModesExcept(modeToKeep: RecordingMode) {
 	);
 
 	// Execute all stops in parallel
-	const results: Result<
-		Blob | undefined,
-		RecorderServiceError | VadRecorderServiceError
-	>[] = await Promise.all(stopPromises);
+	const results = await Promise.all(stopPromises);
 
 	// Partition results into successes and errors
 	const { errs } = partitionResults(results);

@@ -29,22 +29,25 @@ import type { Provider } from '../../core/provider';
  * @example Basic usage in a browser app
  * ```typescript
  * import { defineWorkspace } from '@epicenter/hq';
- * import { setupPersistence } from '@epicenter/hq/providers';
+ * import { setupPersistence } from '@epicenter/hq/providers/persistence';
  *
  * const workspace = defineWorkspace({
  *   id: 'blog',  // This becomes the IndexedDB database name
- *   providers: [setupPersistence],
- *   // ... schema, indexes, actions
+ *   tables: { ... },
+ *   providers: {
+ *     persistence: setupPersistence,
+ *   },
+ *   exports: ({ tables }) => ({ ... }),
  * });
  * ```
  *
  * @example In a Svelte/React component
  * ```typescript
- * import { createWorkspaceClient } from '@epicenter/hq';
+ * import { createClient } from '@epicenter/hq';
  * import { workspace } from './workspace-config';
  *
  * // Inside component setup/onMount:
- * const client = await createWorkspaceClient(workspace);
+ * const client = await createClient(workspace);
  *
  * // Data persists across page refreshes!
  * // Check DevTools → Application → IndexedDB to see the database
@@ -55,12 +58,20 @@ import type { Provider } from '../../core/provider';
  * // Each workspace gets its own IndexedDB database
  * const blog = defineWorkspace({
  *   id: 'blog',  // → IndexedDB database named 'blog'
- *   providers: [setupPersistence],
+ *   tables: { ... },
+ *   providers: {
+ *     persistence: setupPersistence,
+ *   },
+ *   exports: ({ tables }) => ({ ... }),
  * });
  *
  * const notes = defineWorkspace({
  *   id: 'notes',  // → IndexedDB database named 'notes'
- *   providers: [setupPersistence],
+ *   tables: { ... },
+ *   providers: {
+ *     persistence: setupPersistence,
+ *   },
+ *   exports: ({ tables }) => ({ ... }),
  * });
  *
  * // Workspaces are isolated, each with separate IndexedDB storage
@@ -75,7 +86,7 @@ import type { Provider } from '../../core/provider';
  * 5. Click to inspect the stored YJS document
  * ```
  *
- * @see {@link setupPersistence} from `@repo/epicenter/persistence/desktop` for Node.js/filesystem version
+ * @see {@link setupPersistence} from `@epicenter/hq/persistence/desktop` for Node.js/filesystem version
  */
 export const setupPersistence = (({ ydoc }) => {
 	// y-indexeddb handles both loading and saving automatically

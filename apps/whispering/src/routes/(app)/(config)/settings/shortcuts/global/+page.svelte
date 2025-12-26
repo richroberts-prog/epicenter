@@ -1,8 +1,8 @@
 <script lang="ts">
-	import { Button, buttonVariants } from '@repo/ui/button';
-	import { Link } from '@repo/ui/link';
-	import { Separator } from '@repo/ui/separator';
-	import { rpc } from '$lib/query';
+	import { Button, buttonVariants } from '@epicenter/ui/button';
+	import { Link } from '@epicenter/ui/link';
+	import { Separator } from '@epicenter/ui/separator';
+	import { desktopRpc, rpc } from '$lib/query';
 	import Layers2Icon from '@lucide/svelte/icons/layers-2';
 	import RotateCcw from '@lucide/svelte/icons/rotate-ccw';
 	import ShortcutFormatHelp from '../keyboard-shortcut-recorder/ShortcutFormatHelp.svelte';
@@ -36,7 +36,7 @@
 				variant="outline"
 				size="sm"
 				onclick={async () => {
-					await rpc.shortcuts.unregisterAllGlobalShortcuts.execute();
+					await desktopRpc.globalShortcuts.unregisterAll.execute();
 					settings.resetGlobalShortcuts();
 					rpc.notify.success.execute({
 						title: 'Shortcuts reset',
@@ -45,7 +45,7 @@
 				}}
 				class="shrink-0"
 			>
-				<RotateCcw class="mr-2 size-4" />
+				<RotateCcw class="size-4" />
 				Reset to defaults
 			</Button>
 		</div>

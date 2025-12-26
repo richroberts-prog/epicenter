@@ -1,9 +1,8 @@
 <script lang="ts">
-	import * as Field from '@repo/ui/field';
-	import { Separator } from '@repo/ui/separator';
-	import { Button } from '@repo/ui/button';
-	import { Switch } from '@repo/ui/switch';
-	import { Slider } from '@repo/ui/slider';
+	import * as Field from '@epicenter/ui/field';
+	import { Button } from '@epicenter/ui/button';
+	import { Switch } from '@epicenter/ui/switch';
+	import { Slider } from '@epicenter/ui/slider';
 	import PlayIcon from '@lucide/svelte/icons/play';
 	import UploadIcon from '@lucide/svelte/icons/upload';
 	import XIcon from '@lucide/svelte/icons/x';
@@ -15,7 +14,7 @@
 		FileDropZone,
 		ACCEPT_AUDIO,
 		MEGABYTE,
-	} from '@repo/ui/file-drop-zone';
+	} from '@epicenter/ui/file-drop-zone';
 
 	const SOUND_EVENTS = [
 		{ key: 'manual-start', label: 'Manual Recording Start', description: 'When you start recording manually' },
@@ -47,8 +46,6 @@
 			Configure notification sounds, volumes, and custom sounds.
 		</p>
 	</div>
-
-	<Separator />
 
 	<!-- Global Volume Control -->
 	<Field.Set>
@@ -101,8 +98,6 @@
 			</Field.Field>
 		</Field.Group>
 	</Field.Set>
-
-	<Separator />
 
 	<!-- Individual Sound Controls -->
 	<Field.Set>

@@ -1,16 +1,16 @@
 <script lang="ts">
-	import * as Field from '@repo/ui/field';
-	import { Textarea } from '@repo/ui/textarea';
-	import { Button } from '@repo/ui/button';
-	import * as SectionHeader from '@repo/ui/section-header';
-	import { Separator } from '@repo/ui/separator';
+	import * as Field from '@epicenter/ui/field';
+	import { Textarea } from '@epicenter/ui/textarea';
+	import { Button } from '@epicenter/ui/button';
+	import * as SectionHeader from '@epicenter/ui/section-header';
+	import { Separator } from '@epicenter/ui/separator';
 	import { rpc } from '$lib/query';
-	import type { Transformation } from '$lib/services/db';
+	import type { Transformation } from '$lib/services/isomorphic/db';
 	import { createMutation } from '@tanstack/svelte-query';
-	import Loader2Icon from '@lucide/svelte/icons/loader-2';
+	import { Spinner } from '@epicenter/ui/spinner';
 	import PlayIcon from '@lucide/svelte/icons/play';
 
-	const transformInput = createMutation(rpc.transformer.transformInput.options);
+	const transformInput = createMutation(() => rpc.transformer.transformInput.options);
 
 	let { transformation }: { transformation: Transformation } = $props();
 
@@ -67,9 +67,9 @@
 		class="w-full"
 	>
 		{#if transformInput.isPending}
-			<Loader2Icon class="mr-2 size-4 animate-spin" />
+			<Spinner />
 		{:else}
-			<PlayIcon class="mr-2 size-4" />
+			<PlayIcon class="size-4" />
 		{/if}
 		{transformInput.isPending
 			? 'Running Transformation...'

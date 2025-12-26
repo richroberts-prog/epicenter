@@ -1,14 +1,14 @@
-# Markdown Index
+# Markdown Provider
 
-The Markdown Index provides bidirectional synchronization between your YJS documents and markdown files on disk. This enables git-friendly workflows where you can edit data either through your application or by directly editing markdown files.
+The Markdown Provider provides bidirectional synchronization between your YJS documents and markdown files on disk. This enables git-friendly workflows where you can edit data either through your application or by directly editing markdown files.
 
 ## What It Does
 
-The Markdown Index keeps your YJS database and markdown files in sync. When you add, update, or delete records in your database, those changes are automatically written to markdown files. When you edit markdown files directly (for example, in your text editor or through git operations), those changes flow back into the database.
+The Markdown Provider keeps your YJS database and markdown files in sync. When you add, update, or delete records in your database, those changes are automatically written to markdown files. When you edit markdown files directly (for example, in your text editor or through git operations), those changes flow back into the database.
 
 ## Why Use It
 
-Traditional databases store data in binary formats that don't work well with version control systems like git. The Markdown Index solves this by storing each record as a human-readable markdown file with YAML frontmatter. This gives you:
+Traditional databases store data in binary formats that don't work well with version control systems like git. The Markdown Provider solves this by storing each record as a human-readable markdown file with YAML frontmatter. This gives you:
 
 - **Git-friendly storage**: Markdown files can be diffed, merged, and versioned
 - **Direct editing**: Edit your data in any text editor
@@ -79,12 +79,12 @@ For text fields, character-level diffs are computed. For array fields like multi
 
 ## Configuration
 
-The Markdown Index uses a two-layer configuration structure that determines where files are stored and how data is serialized.
+The Markdown Provider uses a two-layer configuration structure that determines where files are stored and how data is serialized.
 
 ### Configuration Layers
 
 ```
-MarkdownIndexConfig
+MarkdownProviderConfig
 ├── directory (workspace-level)
 │   └── Defaults to workspace ID
 │
@@ -105,31 +105,32 @@ MarkdownIndexConfig
 
 ### File Naming
 
-Index artifacts (logs, diagnostics) use the **index ID** from your workspace config:
+Provider artifacts (logs, diagnostics) use the **provider ID** from your workspace config:
 
 ```typescript
-// Single markdown index
-indexes: {
-  markdown: (c) => markdownIndex(c, { directory: './docs' }),
+// Single markdown provider
+providers: {
+  markdown: (c) => markdownProvider(c, { directory: './docs' }),
 }
 // Files: .epicenter/blog/markdown.log, .epicenter/blog/markdown.diagnostics.json
 
-// Multiple markdown indexes
-indexes: {
-  markdownDocs: (c) => markdownIndex(c, { directory: './docs' }),
-  markdownObsidian: (c) => markdownIndex(c, { directory: '/path/to/vault' }),
+// Multiple markdown providers
+providers: {
+  markdownDocs: (c) => markdownProvider(c, { directory: './docs' }),
+  markdownObsidian: (c) => markdownProvider(c, { directory: '/path/to/vault' }),
 }
 // Files: .epicenter/blog/markdownDocs.log, .epicenter/blog/markdownObsidian.log
 ```
 
-The index ID (`markdown`, `markdownDocs`, etc.) is automatically passed via `context.indexId`.
+The provider ID (`markdown`, `markdownDocs`, etc.) is automatically passed via `context.providerId`.
 
 ### Layer 1: Workspace Configuration
 
 **`directory`** (optional): The workspace-level directory where all markdown files for this workspace are stored.
+
 - Defaults to the workspace `id`
-- Can be a relative path (resolved from `storageDir`) or absolute path
-- Example: If workspace id is "blog", defaults to `<storageDir>/blog`
+- Can be a relative path (resolved from `paths.project`) or absolute path
+- Example: If workspace id is "blog", defaults to `<projectDir>/blog`
 
 **`tableConfigs`** (optional): Per-table configuration object where keys are table names and values define how each table is handled.
 
@@ -138,23 +139,26 @@ The index ID (`markdown`, `markdownDocs`, etc.) is automatically passed via `con
 Each table in `tableConfigs` can have these properties:
 
 **`directory`** (optional): The directory for this specific table's markdown files.
+
 - Defaults to the table name
 - Resolved relative to the workspace directory (unless absolute)
 
 **`serialize()`**: Converts a database row into markdown format.
+
 - Input: `{ row, table }`
 - Output: `{ frontmatter, body, filename }`
 
 **`deserialize()`**: Converts markdown back into a database row.
+
 - Input: `{ frontmatter, body, filename, table }`
-- Output: `Result<SerializedRow, MarkdownIndexError>`
+- Output: `Result<SerializedRow, MarkdownProviderError>`
 
 ### Directory Resolution Example
 
 With default configuration:
 
 ```
-storageDir/
+projectDir/
 └── blog/                    (workspace.id = "blog")
     ├── posts/               (table name = "posts")
     │   ├── post-1.md
@@ -167,7 +171,7 @@ storageDir/
 With custom paths:
 
 ```
-storageDir/
+projectDir/
 └── content/                 (workspace.directory = "./content")
     ├── blog-posts/          (posts.directory = "./blog-posts")
     │   ├── post-1.md
@@ -187,7 +191,7 @@ When you don't provide custom configuration:
 - **Deserialize**: Extract `id` from filename, validate frontmatter against schema
 
 ```
-storageDir/
+projectDir/
 └── {workspace.id}/
     └── {tableName}/
         └── {rowId}.md
@@ -197,18 +201,18 @@ storageDir/
 
 ### Setup
 
-Create a markdown index when defining your workspace. The `markdownIndex` is highly configurable but works with sensible defaults.
+Create a markdown provider when defining your workspace. The `markdownProvider` is highly configurable but works with sensible defaults.
 
 #### Minimal Setup (Recommended)
 
-If you're happy with the defaults, you can simply pass `markdownIndex`:
+If you're happy with the defaults, you can simply pass `markdownProvider`:
 
 ```typescript
-import { defineWorkspace, markdownIndex } from 'epicenter';
+import { defineWorkspace, markdownProvider } from 'epicenter';
 
 const workspace = defineWorkspace({
 	id: 'blog',
-	schema: {
+	tables: {
 		posts: {
 			id: id(),
 			title: text(),
@@ -218,8 +222,8 @@ const workspace = defineWorkspace({
 		},
 	},
 
-	indexes: {
-		markdown: markdownIndex, // Uses all defaults!
+	providers: {
+		markdown: markdownProvider, // Uses all defaults!
 	},
 });
 ```
@@ -235,19 +239,19 @@ With this setup:
 You can also write it out explicitly if you prefer:
 
 ```typescript
-indexes: {
-	markdown: (context) => markdownIndex(context);
+providers: {
+	markdown: (context) => markdownProvider(context);
 }
 ```
 
 #### Custom Storage Directory
 
-To store files in a different location (relative to storageDir):
+To store files in a different location (relative to project directory):
 
 ```typescript
-indexes: {
-  markdown: (context) => markdownIndex(context, {
-    directory: './vault',  // → <storageDir>/vault
+providers: {
+  markdown: (context) => markdownProvider(context, {
+    directory: './vault',  // → <projectDir>/vault
   }),
 }
 ```
@@ -255,8 +259,8 @@ indexes: {
 Or use an absolute path:
 
 ```typescript
-indexes: {
-  markdown: (context) => markdownIndex(context, {
+providers: {
+  markdown: (context) => markdownProvider(context, {
     directory: '/absolute/path/to/vault',
   }),
 }
@@ -272,8 +276,8 @@ Use custom serializers when you want to control how your data is stored in markd
 **Example 1: Basic body in markdown body**
 
 ```typescript
-indexes: {
-  markdown: (context) => markdownIndex(context, {
+providers: {
+  markdown: (context) => markdownProvider(context, {
     tableConfigs: {
       posts: {
         serialize: ({ row }) => ({
@@ -289,7 +293,7 @@ indexes: {
           const frontmatterParsed = FrontMatter(frontmatter);
 
           if (frontmatterParsed instanceof type.errors) {
-            return MarkdownIndexErr({
+            return MarkdownProviderErr({
               message: `Invalid frontmatter for post ${id}`,
               context: { filename, id, reason: frontmatterParsed },
             });
@@ -314,8 +318,8 @@ indexes: {
 This creates more natural-looking markdown files where the title is a header:
 
 ```typescript
-indexes: {
-  markdown: (context) => markdownIndex(context, {
+providers: {
+  markdown: (context) => markdownProvider(context, {
     tableConfigs: {
       posts: {
         serialize: ({ row }) => ({
@@ -336,7 +340,7 @@ indexes: {
           const frontmatterParsed = FrontMatter(frontmatter);
 
           if (frontmatterParsed instanceof type.errors) {
-            return MarkdownIndexErr({
+            return MarkdownProviderErr({
               message: `Invalid frontmatter for post ${id}`,
               context: { filename, id, reason: frontmatterParsed },
             });
@@ -375,8 +379,8 @@ This is the actual content of my blog post...
 For complete control over file structure and serialization:
 
 ```typescript
-indexes: {
-  markdown: (context) => markdownIndex(context, {
+providers: {
+  markdown: (context) => markdownProvider(context, {
     directory: './content',  // Custom workspace directory
     tableConfigs: {
       posts: {
@@ -394,7 +398,7 @@ indexes: {
           const frontmatterParsed = FrontMatter(frontmatter);
 
           if (frontmatterParsed instanceof type.errors) {
-            return MarkdownIndexErr({
+            return MarkdownProviderErr({
               message: `Invalid frontmatter for post ${id}`,
               context: { filename, id, reason: frontmatterParsed },
             });
@@ -421,8 +425,8 @@ Once configured, you can work with your data in two ways:
 **Through the application**:
 
 ```typescript
-// Insert a post (markdown file created automatically)
-db.tables.posts.insert({
+// Upsert a post (markdown file created automatically)
+tables.posts.upsert({
 	id: 'hello-world',
 	title: 'Hello World',
 	content: 'My first post',
@@ -431,7 +435,7 @@ db.tables.posts.insert({
 });
 
 // Update a post (markdown file updated automatically)
-db.tables.posts.update({
+tables.posts.update({
 	id: 'hello-world',
 	published: true,
 });
@@ -457,7 +461,7 @@ Save the file, and the changes automatically sync to your database.
 
 ## Loop Prevention
 
-The index prevents infinite loops between file changes and database changes using simple flag-based guards. When processing a database change, file watch events are ignored. When processing a file change, database observers are ignored. This ensures changes only propagate in one direction at a time.
+The provider prevents infinite loops between file changes and database changes using simple flag-based guards. When processing a database change, file watch events are ignored. When processing a file change, database observers are ignored. This ensures changes only propagate in one direction at a time.
 
 ## Error Handling
 
@@ -472,12 +476,12 @@ The system is designed to be resilient to errors in individual files rather than
 ## Limitations
 
 - **Y.XmlFragment fields**: Currently not supported (future enhancement)
-- **File watcher noise**: File systems can generate multiple events for a single change, but the index handles this gracefully through idempotent operations
+- **File watcher noise**: File systems can generate multiple events for a single change, but the provider handles this gracefully through idempotent operations
 - **Large files**: Each record becomes its own file, which works well for most use cases but may not be ideal for extremely large datasets
 
 ## When to Use
 
-The Markdown Index is ideal when:
+The Markdown Provider is ideal when:
 
 - You want git-friendly storage for your data
 - You want to edit records directly in a text editor

@@ -1,6 +1,6 @@
 <script lang="ts">
-	import * as Field from '@repo/ui/field';
-	import * as Select from '@repo/ui/select';
+	import * as Field from '@epicenter/ui/field';
+	import * as Select from '@epicenter/ui/select';
 	import { rpc } from '$lib/query';
 	import type { DeviceIdentifier } from '$lib/services/types';
 	import { asDeviceIdentifier } from '$lib/services/types';
@@ -13,7 +13,7 @@
 	} = $props();
 
 	// Use recorder.enumerateDevices for manual recording (includes desktop devices)
-	const getDevicesQuery = createQuery(rpc.recorder.enumerateDevices.options);
+	const getDevicesQuery = createQuery(() => rpc.recorder.enumerateDevices.options);
 
 	$effect(() => {
 		if (getDevicesQuery.isError) {

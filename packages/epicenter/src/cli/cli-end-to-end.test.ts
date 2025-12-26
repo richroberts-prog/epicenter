@@ -4,7 +4,7 @@ import { mkdir, rm } from 'node:fs/promises';
 import path from 'node:path';
 import { type } from 'arktype';
 import { Ok } from 'wellcrafted/result';
-import { defineEpicenter } from '../core/epicenter';
+import { createClient } from '../core/workspace/client.node';
 import {
 	defineMutation,
 	defineQuery,
@@ -13,10 +13,10 @@ import {
 	generateId,
 	id,
 	integer,
-	markdownIndex,
-	sqliteIndex,
 	text,
-} from '../index';
+} from '../index.node';
+import { markdownProvider } from '../indexes/markdown';
+import { sqliteProvider } from '../indexes/sqlite';
 import { createCLI } from './cli';
 
 /**
@@ -32,7 +32,7 @@ describe('CLI End-to-End Tests', () => {
 	const testWorkspace = defineWorkspace({
 		id: 'posts',
 
-		schema: {
+		tables: {
 			posts: {
 				id: id(),
 				title: text(),
@@ -42,17 +42,17 @@ describe('CLI End-to-End Tests', () => {
 			},
 		},
 
-		indexes: {
-			sqlite: (c) => sqliteIndex(c),
-			markdown: (c) => markdownIndex(c, { directory: './content' }),
+		providers: {
+			sqlite: (c) => sqliteProvider(c),
+			markdown: (c) => markdownProvider(c, { directory: './content' }),
 		},
 
-		exports: ({ db, indexes }) => ({
+		exports: ({ tables, providers }) => ({
 			listPosts: defineQuery({
 				handler: async () => {
-					const posts = await indexes.sqlite.db
+					const posts = await providers.sqlite.db
 						.select()
-						.from(indexes.sqlite.posts);
+						.from(providers.sqlite.posts);
 					return Ok(posts);
 				},
 			}),
@@ -60,10 +60,10 @@ describe('CLI End-to-End Tests', () => {
 			getPost: defineQuery({
 				input: type({ id: 'string' }),
 				handler: async ({ id }) => {
-					const post = await indexes.sqlite.db
+					const post = await providers.sqlite.db
 						.select()
-						.from(indexes.sqlite.posts)
-						.where(eq(indexes.sqlite.posts.id, id));
+						.from(providers.sqlite.posts)
+						.where(eq(providers.sqlite.posts.id, id));
 					return Ok(post);
 				},
 			}),
@@ -81,8 +81,8 @@ describe('CLI End-to-End Tests', () => {
 						content: content ?? null,
 						category,
 						views: 0,
-					} satisfies typeof db.posts.$inferSerializedRow;
-					db.posts.insert(post);
+					} satisfies typeof tables.posts.$inferSerializedRow;
+					tables.posts.upsert(post);
 					return Ok(post);
 				},
 			}),
@@ -93,23 +93,23 @@ describe('CLI End-to-End Tests', () => {
 					views: 'number',
 				}),
 				handler: async ({ id, views }) => {
-					const result = db.posts.get({ id });
-					if (!result?.data) {
+					const result = tables.posts.get({ id });
+					if (result.status !== 'valid') {
 						return Ok(null);
 					}
-					db.posts.update({ id, views });
-					const updatedResult = db.posts.get({ id });
-					return Ok(updatedResult?.data?.toJSON());
+					tables.posts.update({ id, views });
+					const updatedResult = tables.posts.get({ id });
+					if (updatedResult.status !== 'valid') {
+						return Ok(null);
+					}
+					return Ok(updatedResult.row.toJSON());
 				},
 			}),
 		}),
 	});
 
-	const epicenter = defineEpicenter({
-		id: 'cli-e2e-test',
-		storageDir: TEST_DIR,
-		workspaces: [testWorkspace],
-	});
+	const workspaces = [testWorkspace] as const;
+	const options = { projectDir: TEST_DIR };
 
 	beforeEach(async () => {
 		// Clean up test data
@@ -129,66 +129,56 @@ describe('CLI End-to-End Tests', () => {
 	});
 
 	test('CLI can create a post', async () => {
-		// createCLI parses and executes the command internally
-		await createCLI({
-			config: epicenter,
-			argv: [
-				'posts',
-				'createPost',
-				'--title',
-				'Test Post',
-				'--content',
-				'Test content',
-				'--category',
-				'tech',
-			],
-		});
+		const client = await createClient(workspaces, options);
+		await createCLI(client).run([
+			'posts',
+			'createPost',
+			'--title',
+			'Test Post',
+			'--content',
+			'Test content',
+			'--category',
+			'tech',
+		]);
 
-		// Verify the post was created by checking the markdown file
 		await new Promise((resolve) => setTimeout(resolve, 200));
 		const files = await Bun.$`ls ${TEST_MARKDOWN}/posts`.text();
 		expect(files.trim().length).toBeGreaterThan(0);
 	});
 
 	test('CLI can query posts', async () => {
-		// First create a post
-		await createCLI({
-			config: epicenter,
-			argv: [
-				'posts',
-				'createPost',
-				'--title',
-				'Query Test',
-				'--category',
-				'tech',
-			],
-		});
+		const client = await createClient(workspaces, options);
+		await createCLI(client).run([
+			'posts',
+			'createPost',
+			'--title',
+			'Query Test',
+			'--category',
+			'tech',
+		]);
 
-		// Wait for the post to be created
 		await new Promise((resolve) => setTimeout(resolve, 200));
 
-		// Now query all posts
-		await createCLI({
-			config: epicenter,
-			argv: ['posts', 'listPosts'],
-		});
+		const client2 = await createClient(workspaces, options);
+		await createCLI(client2).run(['posts', 'listPosts']);
 	});
 
 	test('CLI handles missing required options', async () => {
 		try {
-			await createCLI({
-				config: epicenter,
-				argv: ['posts', 'createPost', '--title', 'Missing Category'],
-			});
-			expect(false).toBe(true); // Should not reach here
+			const client = await createClient(workspaces, options);
+			await createCLI(client).run([
+				'posts',
+				'createPost',
+				'--title',
+				'Missing Category',
+			]);
+			expect(false).toBe(true);
 		} catch (error) {
-			// Expected to fail due to missing required field
 			expect(error).toBeDefined();
 		}
 	});
 
 	test('CLI properly formats success output', async () => {
-		// Capture console output
 		const logs: string[] = [];
 		const originalLog = console.log;
 		console.log = (...args: unknown[]) => {
@@ -196,21 +186,18 @@ describe('CLI End-to-End Tests', () => {
 			originalLog(...args);
 		};
 
-		await createCLI({
-			config: epicenter,
-			argv: [
-				'posts',
-				'createPost',
-				'--title',
-				'Output Test',
-				'--category',
-				'test',
-			],
-		});
+		const client = await createClient(workspaces, options);
+		await createCLI(client).run([
+			'posts',
+			'createPost',
+			'--title',
+			'Output Test',
+			'--category',
+			'test',
+		]);
 
 		console.log = originalLog;
 
-		// Verify output format
 		expect(logs.some((log) => log.includes('Success'))).toBe(true);
 	});
 });

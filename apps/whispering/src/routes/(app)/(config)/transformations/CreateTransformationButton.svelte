@@ -1,16 +1,16 @@
 <script lang="ts">
 	import { confirmationDialog } from '$lib/components/ConfirmationDialog.svelte';
 	import { Editor } from '$lib/components/transformations-editor';
-	import { Button } from '@repo/ui/button';
-	import * as Dialog from '@repo/ui/dialog';
-	import { Separator } from '@repo/ui/separator';
+	import { Button } from '@epicenter/ui/button';
+	import * as Dialog from '@epicenter/ui/dialog';
+	import { Separator } from '@epicenter/ui/separator';
 	import { rpc } from '$lib/query';
-	import { generateDefaultTransformation } from '$lib/services/db';
+	import { generateDefaultTransformation } from '$lib/services/isomorphic/db';
 	import { createMutation } from '@tanstack/svelte-query';
 	import PlusIcon from '@lucide/svelte/icons/plus';
 
 	const createTransformation = createMutation(
-		rpc.db.transformations.create.options,
+		() => rpc.db.transformations.create.options,
 	);
 
 	let isDialogOpen = $state(false);
@@ -19,8 +19,8 @@
 	function promptUserConfirmLeave() {
 		confirmationDialog.open({
 			title: 'Unsaved changes',
-			subtitle: 'You have unsaved changes. Are you sure you want to leave?',
-			confirmText: 'Leave',
+			description: 'You have unsaved changes. Are you sure you want to leave?',
+			confirm: { text: 'Leave' },
 			onConfirm: () => {
 				isDialogOpen = false;
 			},
@@ -32,7 +32,7 @@
 	<Dialog.Trigger>
 		{#snippet child({ props })}
 			<Button {...props}>
-				<PlusIcon class="size-4 mr-2" />
+				<PlusIcon class="size-4" />
 				Create Transformation
 			</Button>
 		{/snippet}

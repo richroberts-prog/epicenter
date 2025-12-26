@@ -3,15 +3,15 @@
 	import {
 		isModelFileSizeValid,
 		type LocalModelConfig,
-	} from '$lib/services/transcription/local/types';
+	} from '$lib/services/isomorphic/transcription/local/types';
 	import { settings } from '$lib/stores/settings.svelte';
 	import CheckIcon from '@lucide/svelte/icons/check';
 	import Download from '@lucide/svelte/icons/download';
-	import LoaderCircle from '@lucide/svelte/icons/loader-circle';
+	import { Spinner } from '@epicenter/ui/spinner';
 	import X from '@lucide/svelte/icons/x';
-	import { Badge } from '@repo/ui/badge';
-	import { Button } from '@repo/ui/button';
-	import { Progress } from '@repo/ui/progress';
+	import { Badge } from '@epicenter/ui/badge';
+	import { Button } from '@epicenter/ui/button';
+	import { Progress } from '@epicenter/ui/progress';
 	import { join } from '@tauri-apps/api/path';
 	import {
 		exists,
@@ -46,6 +46,7 @@
 	 * @returns The full path where the model should be stored:
 	 * - For Whisper models: `{appDataDir}/models/whisper/{filename}` (a single file)
 	 * - For Parakeet models: `{appDataDir}/models/parakeet/{directoryName}/` (a directory containing multiple files)
+	 * - For Moonshine models: `{appDataDir}/models/moonshine/{directoryName}/` (a directory containing multiple files)
 	 */
 	async function ensureModelDestinationPath(): Promise<string> {
 		switch (model.engine) {
@@ -65,6 +66,15 @@
 					await mkdir(parakeetModelsDir, { recursive: true });
 				}
 				return await join(parakeetModelsDir, model.directoryName);
+			}
+			case 'moonshine': {
+				// Moonshine models are stored in a directory
+				const moonshineModelsDir = await PATHS.MODELS.MOONSHINE();
+				// Ensure directory exists
+				if (!(await exists(moonshineModelsDir))) {
+					await mkdir(moonshineModelsDir, { recursive: true });
+				}
+				return await join(moonshineModelsDir, model.directoryName);
 			}
 		}
 	}
@@ -90,9 +100,10 @@
 				}
 				return true;
 			}
-			case 'parakeet': {
+			case 'parakeet':
+			case 'moonshine': {
 				if (!(await exists(path))) return false;
-				// For Parakeet models, path must be a directory containing all files
+				// For multi-file models, path must be a directory containing all files
 				const { data: dirStats } = await tryAsync({
 					try: () => stat(path),
 					catch: () => Ok(null),
@@ -111,7 +122,7 @@
 					if (!fileStats) return false;
 					if (!isModelFileSizeValid(fileStats.size, file.sizeBytes)) {
 						console.warn(
-							`Parakeet file "${file.filename}" appears corrupted: ${Math.round(fileStats.size / 1_000_000)}MB, expected ~${Math.round(file.sizeBytes / 1_000_000)}MB`,
+							`${model.engine} file "${file.filename}" appears corrupted: ${Math.round(fileStats.size / 1_000_000)}MB, expected ~${Math.round(file.sizeBytes / 1_000_000)}MB`,
 						);
 						return false;
 					}
@@ -236,8 +247,9 @@
 						);
 						break;
 					}
-					case 'parakeet': {
-						// Multiple file downloads for Parakeet
+					case 'parakeet':
+					case 'moonshine': {
+						// Multiple file downloads for multi-file models
 						const totalBytes = model.sizeBytes;
 						let downloadedBytes = 0;
 
@@ -298,7 +310,9 @@
 			try: async () => {
 				const path = await ensureModelDestinationPath();
 				if (await exists(path)) {
-					await remove(path, { recursive: model.engine === 'parakeet' });
+					const isDirectory =
+						model.engine === 'parakeet' || model.engine === 'moonshine';
+					await remove(path, { recursive: isDirectory });
 				}
 
 				// Clear settings if this was the active model
@@ -347,7 +361,7 @@
 	<div class="flex items-center gap-2">
 		{#if modelState.type === 'downloading'}
 			<div class="flex items-center gap-2 min-w-[120px]">
-				<LoaderCircle class="size-4 animate-spin" />
+				<Spinner />
 				<span class="text-sm font-medium">{modelState.progress}%</span>
 			</div>
 		{:else if modelState.type === 'ready'}
@@ -367,7 +381,7 @@
 			</Button>
 		{:else}
 			<Button size="sm" variant="outline" onclick={downloadModel}>
-				<Download class="size-4 mr-2" />
+				<Download class="size-4" />
 				Download
 			</Button>
 		{/if}

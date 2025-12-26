@@ -1,6 +1,6 @@
 <script lang="ts">
-	import WhisperingButton from '$lib/components/WhisperingButton.svelte';
-	import type { Transformation } from '$lib/services/db';
+	import { Button } from '@epicenter/ui/button';
+	import type { Transformation } from '$lib/services/isomorphic/db';
 	import { settings } from '$lib/stores/settings.svelte';
 	import CheckCircleIcon from '@lucide/svelte/icons/check-circle';
 	import CircleIcon from '@lucide/svelte/icons/circle';
@@ -27,8 +27,8 @@
 	);
 </script>
 
-<WhisperingButton
-	tooltipContent={displayText}
+<Button
+	tooltip={displayText}
 	variant="ghost"
 	{size}
 	class={className}
@@ -51,4 +51,4 @@
 	{:else}
 		<CircleIcon class="size-4" />
 	{/if}
-</WhisperingButton>
+</Button>

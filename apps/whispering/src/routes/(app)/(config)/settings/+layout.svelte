@@ -1,8 +1,8 @@
 <script lang="ts">
 	import { confirmationDialog } from '$lib/components/ConfirmationDialog.svelte';
-	import { Button } from '@repo/ui/button';
-	import { Link } from '@repo/ui/link';
-	import { Separator } from '@repo/ui/separator';
+	import { Button } from '@epicenter/ui/button';
+	import { Link } from '@epicenter/ui/link';
+	import { Separator } from '@epicenter/ui/separator';
 	import { rpc } from '$lib/query';
 	import RotateCcw from '@lucide/svelte/icons/rotate-ccw';
 	import SidebarNav from './SidebarNav.svelte';
@@ -72,9 +72,9 @@
 			onclick={() => {
 				confirmationDialog.open({
 					title: 'Reset All Settings',
-					subtitle:
+					description:
 						'This will reset all settings to their default values. This action cannot be undone.',
-					confirmText: 'Reset Settings',
+					confirm: { text: 'Reset Settings', variant: 'destructive' },
 					onConfirm: () => {
 						settings.reset();
 						rpc.notify.success.execute({
@@ -86,7 +86,7 @@
 			}}
 			class="shrink-0"
 		>
-			<RotateCcw class="mr-2 size-4" />
+			<RotateCcw class="size-4" />
 			Reset to defaults
 		</Button>
 	</div>
@@ -95,7 +95,7 @@
 		<aside class="lg:w-1/6">
 			<SidebarNav />
 		</aside>
-		<main class="flex-1 lg:max-w-3xl">
+		<main class="flex-1 p-1.5 lg:max-w-3xl">
 			{@render children()}
 		</main>
 	</div>

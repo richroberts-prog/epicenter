@@ -1,21 +1,16 @@
 import { describe, expect, test } from 'bun:test';
 import { type } from 'arktype';
 import { Ok } from 'wellcrafted/result';
-import { defineEpicenter } from '../core/epicenter';
-import {
-	defineMutation,
-	defineWorkspace,
-	id,
-	sqliteIndex,
-	text,
-} from '../index';
+import { createClient } from '../core/workspace/client.node';
+import { defineMutation, defineWorkspace, id, text } from '../index.node';
+import { sqliteProvider } from '../indexes/sqlite';
 import { createCLI } from './cli';
 
 describe('CLI Integration', () => {
 	const testWorkspace = defineWorkspace({
 		id: 'test',
 
-		schema: {
+		tables: {
 			items: {
 				id: id(),
 				name: text(),
@@ -23,11 +18,11 @@ describe('CLI Integration', () => {
 			},
 		},
 
-		indexes: {
-			sqlite: (c) => sqliteIndex(c),
+		providers: {
+			sqlite: (c) => sqliteProvider(c),
 		},
 
-		exports: ({ db }) => ({
+		exports: ({ tables }) => ({
 			createItem: defineMutation({
 				input: type({
 					name: 'string',
@@ -40,27 +35,22 @@ describe('CLI Integration', () => {
 						name,
 						count: String(count),
 					};
-					db.items.insert(item);
+					tables.items.upsert(item);
 					return Ok(item);
 				},
 			}),
 		}),
 	});
 
-	const epicenter = defineEpicenter({
-		id: 'test-cli-epicenter',
-		workspaces: [testWorkspace],
+	const workspaces = [testWorkspace] as const;
+
+	test('CLI can be created from workspaces array', async () => {
+		const client = await createClient(workspaces);
+		await createCLI(client).run(['--help']);
 	});
 
-	test('CLI can be created from epicenter config', async () => {
-		const cli = await createCLI({ config: epicenter, argv: [] });
-		expect(cli).toBeDefined();
-	});
-
-	test('creates CLI with proper command structure', async () => {
-		const cli = await createCLI({ config: epicenter, argv: [] });
-
-		// Verify CLI has basic yargs structure
-		expect(cli.parse).toBeDefined();
+	test('CLI runs workspace command', async () => {
+		const client = await createClient(workspaces);
+		await createCLI(client).run(['test', '--help']);
 	});
 });

@@ -20,41 +20,6 @@
 	} from '@epicenter/ui/file-drop-zone';
 	import OpenFolderButton from '$lib/components/OpenFolderButton.svelte';
 	import { PATHS } from '$lib/constants/paths';
-	import { Ok, tryAsync } from 'wellcrafted/result';
-
-	async function revealCustomSound(soundKey: string) {
-		if (!window.__TAURI_INTERNALS__) return;
-
-		await tryAsync({
-			try: async () => {
-				const { revealItemInDir } = await import('@tauri-apps/plugin-opener');
-				const soundsPath = await PATHS.DB.CUSTOM_SOUNDS();
-				const { readDir } = await import('@tauri-apps/plugin-fs');
-				const { join } = await import('@tauri-apps/api/path');
-
-				const files = await readDir(soundsPath);
-				const audioFile = files.find(
-					(f) => f.name.startsWith(`${soundKey}.`) && !f.name.endsWith('.md'),
-				);
-
-				if (audioFile) {
-					const filePath = await join(soundsPath, audioFile.name);
-					await revealItemInDir(filePath);
-				} else {
-					// If no file found, just open the folder
-					const { openPath } = await import('@tauri-apps/plugin-opener');
-					await openPath(soundsPath);
-				}
-			},
-			catch: (error) => {
-				rpc.notify.error.execute({
-					title: 'Failed to reveal file',
-					description: error instanceof Error ? error.message : 'Unknown error',
-				});
-				return Ok(undefined);
-			},
-		});
-	}
 
 	const SOUND_EVENTS = [
 		{
@@ -261,20 +226,14 @@
 								<Item.Content>
 									<Item.Title>Custom sound active</Item.Title>
 									<Item.Description>
-										{#if window.__TAURI_INTERNALS__}
-											<button
-												type="button"
-												onclick={() => revealCustomSound(soundEvent.key)}
-												class="cursor-pointer"
-											>
-												<Badge variant="id">{soundEvent.key}</Badge>
-											</button>
-										{:else}
-											<Badge variant="id">{soundEvent.key}</Badge>
-										{/if}
+										<Badge variant="id">{soundEvent.key}</Badge>
 									</Item.Description>
 								</Item.Content>
 								<Item.Actions>
+									<OpenFolderButton
+										getFolderPath={PATHS.DB.CUSTOM_SOUNDS}
+										tooltipText="Reveal in Finder"
+									/>
 									<Button
 										variant="outline"
 										size="sm"

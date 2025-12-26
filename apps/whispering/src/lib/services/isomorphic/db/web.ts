@@ -1,6 +1,6 @@
 import Dexie, { type Transaction } from 'dexie';
 import { nanoid } from 'nanoid/non-secure';
-import { extractErrorMessage } from 'wellcrafted/error';
+import { createTaggedError, extractErrorMessage } from 'wellcrafted/error';
 import { Err, Ok, tryAsync } from 'wellcrafted/result';
 import { moreDetailsDialog } from '$lib/components/MoreDetailsDialog.svelte';
 import { rpc } from '$lib/query';
@@ -281,7 +281,7 @@ class WhisperingDatabase extends Dexie {
 									// Convert V4 (Recording with blob) to V5 (RecordingStoredInIndexedDB)
 									const { blob, ...recordWithoutBlob } = record;
 									const serializedAudio = blob
-										? await blobToSerializedAudio(blob)
+										? (await blobToSerializedAudio(blob)).data ?? undefined
 										: undefined;
 									return {
 										...recordWithoutBlob,
@@ -444,13 +444,31 @@ export function createDbServiceWeb({
 					? paramsOrParamsArray
 					: [paramsOrParamsArray];
 
-				const dbRecordings: RecordingsDbSchemaV5['recordings'][] =
-					await Promise.all(
-						paramsArray.map(async ({ recording, audio }) => ({
-							...recording,
-							serializedAudio: await blobToSerializedAudio(audio),
-						})),
-					);
+				const dbRecordingsResults = await Promise.all(
+					paramsArray.map(async ({ recording, audio }) => {
+						const { data: serializedAudio, error } =
+							await blobToSerializedAudio(audio);
+						if (error) return { error };
+						return {
+							data: {
+								...recording,
+								serializedAudio,
+							} satisfies RecordingsDbSchemaV5['recordings'],
+						};
+					}),
+				);
+
+				// Check for any serialization errors
+				const firstError = dbRecordingsResults.find((r) => r.error)?.error;
+				if (firstError) {
+					return DbServiceErr({
+						message: `Error serializing audio for recording: ${firstError.message}`,
+					});
+				}
+
+				const dbRecordings = dbRecordingsResults.map(
+					(r) => r.data as RecordingsDbSchemaV5['recordings'],
+				);
 
 				return tryAsync({
 					try: async () => {
@@ -1004,12 +1022,16 @@ export function createDbServiceWeb({
 			},
 
 			async save(soundId, file) {
+				const { data: serializedAudio, error: serializeError } =
+					await blobToSerializedAudio(file);
+				if (serializeError) {
+					return DbServiceErr({
+						message: `Error serializing custom sound (soundId: ${soundId}): ${serializeError.message}`,
+					});
+				}
+
 				return tryAsync({
 					try: async () => {
-						const serializedAudio = await blobToSerializedAudio(file);
-						if (!serializedAudio) {
-							throw new Error('Failed to serialize audio file');
-						}
 						const customSound = {
 							id: soundId,
 							serializedAudio,
@@ -1036,21 +1058,22 @@ export function createDbServiceWeb({
 	};
 }
 
+const { BlobSerializationErr } = createTaggedError('BlobSerializationError');
+
 /**
  * Convert Blob to serialized format for IndexedDB storage.
- * Returns null if conversion fails.
  */
-async function blobToSerializedAudio(
-	blob: Blob,
-): Promise<SerializedAudio | undefined> {
-	const arrayBuffer = await blob.arrayBuffer().catch((error) => {
-		console.error('Error getting array buffer from blob', blob, error);
-		return undefined;
+async function blobToSerializedAudio(blob: Blob) {
+	return tryAsync({
+		try: async () => {
+			const arrayBuffer = await blob.arrayBuffer();
+			return { arrayBuffer, blobType: blob.type } satisfies SerializedAudio;
+		},
+		catch: (error) =>
+			BlobSerializationErr({
+				message: `Failed to serialize blob to ArrayBuffer: ${extractErrorMessage(error)}`,
+			}),
 	});
-
-	if (!arrayBuffer) return undefined;
-
-	return { arrayBuffer, blobType: blob.type };
 }
 
 /**

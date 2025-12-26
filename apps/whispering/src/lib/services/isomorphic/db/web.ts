@@ -1036,10 +1036,10 @@ export function createDbServiceWeb({
 				return tryAsync({
 					try: async () => {
 						const arrayBuffer = await file.arrayBuffer();
-						const customSound: CustomSound = {
+						const customSound = {
 							id: soundId,
 							serializedAudio: { arrayBuffer, blobType: file.type },
-						};
+						} satisfies CustomSound;
 						await db.customSounds.put(customSound);
 					},
 					catch: (error) =>

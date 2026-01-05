@@ -86,6 +86,21 @@ export {
 	TIMEZONE_ID_REGEX,
 } from './runtime/regex.js';
 
+export { Temporal, type ZonedDateTimeString } from './runtime/zoned-datetime.js';
+export {
+	compareZonedDateTimeStrings,
+	createZonedDateTimeString,
+	getInstant,
+	getTimeZoneId,
+	isLegacyDateString,
+	isZonedDateTimeString,
+	migrateLegacyDateString,
+	nowZonedDateTimeString,
+	parseZonedDateTime,
+	toZonedDateTime,
+	toZonedDateTimeString,
+} from './runtime/zoned-datetime.js';
+
 export { serializeCellValue } from './runtime/serialization.js';
 
 export type { Id } from './id.js';

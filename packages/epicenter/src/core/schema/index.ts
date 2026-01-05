@@ -67,39 +67,20 @@ export type {
 
 export { generateJsonSchema } from './standard/to-json-schema.js';
 
-export type {
-	DateIsoString,
-	DateWithTimezoneString,
-	TimezoneId,
-} from './runtime/date-with-timezone.js';
-export {
-	DateWithTimezone,
-	DateWithTimezoneFromString,
-	isDateWithTimezone,
-	isDateWithTimezoneString,
-	isIsoDateTimeString,
-} from './runtime/date-with-timezone.js';
-
-export {
-	DATE_WITH_TIMEZONE_STRING_REGEX,
-	ISO_DATETIME_REGEX,
-	TIMEZONE_ID_REGEX,
-} from './runtime/regex.js';
-
-export { Temporal, type ZonedDateTimeString } from './runtime/zoned-datetime.js';
 export {
 	compareZonedDateTimeStrings,
 	createZonedDateTimeString,
 	getInstant,
 	getTimeZoneId,
-	isLegacyDateString,
 	isZonedDateTimeString,
-	migrateLegacyDateString,
 	nowZonedDateTimeString,
 	parseZonedDateTime,
+	Temporal,
 	toZonedDateTime,
 	toZonedDateTimeString,
+	ZONED_DATETIME_STRING_REGEX,
 } from './runtime/zoned-datetime.js';
+export type { ZonedDateTimeString } from './runtime/zoned-datetime.js';
 
 export { serializeCellValue } from './runtime/serialization.js';
 

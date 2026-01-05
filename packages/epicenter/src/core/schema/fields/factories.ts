@@ -9,8 +9,10 @@
  * rather than being embedded in the schema.
  */
 
-import type { DateWithTimezone } from '../runtime/date-with-timezone';
-import { DATE_WITH_TIMEZONE_STRING_REGEX } from '../runtime/regex';
+import {
+	ZONED_DATETIME_STRING_REGEX,
+	type ZonedDateTimeString,
+} from '../runtime/zoned-datetime';
 import type {
 	StandardSchemaV1,
 	StandardSchemaWithJSONSchema,
@@ -170,25 +172,25 @@ export function boolean({
  */
 export function date(opts: {
 	nullable: true;
-	default?: DateWithTimezone;
+	default?: ZonedDateTimeString;
 }): DateFieldSchema<true>;
 export function date(opts?: {
 	nullable?: false;
-	default?: DateWithTimezone;
+	default?: ZonedDateTimeString;
 }): DateFieldSchema<false>;
 export function date({
 	nullable = false,
 	default: defaultValue,
 }: {
 	nullable?: boolean;
-	default?: DateWithTimezone;
+	default?: ZonedDateTimeString;
 } = {}): DateFieldSchema<boolean> {
 	return {
 		'x-component': 'date',
 		type: nullable ? (['string', 'null'] as const) : ('string' as const),
 		description:
-			'ISO 8601 date with timezone (e.g., 2024-01-01T20:00:00.000Z|America/New_York)',
-		pattern: DATE_WITH_TIMEZONE_STRING_REGEX.source,
+			'RFC 9557 ZonedDateTime (e.g., 2024-01-15T14:30:00-05:00[America/New_York])',
+		pattern: ZONED_DATETIME_STRING_REGEX.source,
 		...(defaultValue !== undefined && { default: defaultValue }),
 	};
 }

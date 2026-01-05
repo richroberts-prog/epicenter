@@ -11,9 +11,8 @@ import type {
 } from '../schema';
 import {
 	fieldSchemaToYjsArktype,
-	isDateWithTimezone,
-	isDateWithTimezoneString,
 	isNullableFieldSchema,
+	isZonedDateTimeString,
 } from '../schema';
 import { updateYArrayFromArray, updateYTextFromString } from '../utils/yjs';
 
@@ -116,11 +115,7 @@ export function createKvHelper<TFieldSchema extends KvFieldSchema>({
 
 		if (value === undefined) {
 			if ('default' in schema && schema.default !== undefined) {
-				const defaultVal = schema.default;
-				if (isDateWithTimezone(defaultVal)) {
-					return defaultVal.toJSON() as TValue;
-				}
-				return defaultVal as TValue;
+				return schema.default as TValue;
 			}
 			if (nullable) {
 				return null as TValue;
@@ -153,7 +148,7 @@ export function createKvHelper<TFieldSchema extends KvFieldSchema>({
 				return;
 			}
 
-			if (schema['x-component'] === 'date' && isDateWithTimezoneString(input)) {
+			if (schema['x-component'] === 'date' && isZonedDateTimeString(input)) {
 				ykvMap.set(keyName, input);
 				return;
 			}
@@ -307,11 +302,7 @@ export function createKvHelper<TFieldSchema extends KvFieldSchema>({
 		reset(): void {
 			ydoc.transact(() => {
 				if ('default' in schema && schema.default !== undefined) {
-					const defaultVal = schema.default;
-					const serializedDefault = isDateWithTimezone(defaultVal)
-						? (defaultVal.toJSON() as TSerializedValue)
-						: (defaultVal as TSerializedValue);
-					setValueFromSerialized(serializedDefault);
+					setValueFromSerialized(schema.default as TSerializedValue);
 				} else if (nullable) {
 					ykvMap.set(keyName, null);
 				} else {

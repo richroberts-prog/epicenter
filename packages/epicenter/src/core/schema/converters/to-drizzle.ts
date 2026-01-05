@@ -28,10 +28,7 @@ import type {
 	WorkspaceSchema,
 	YtextFieldSchema,
 } from '../fields/types';
-import type {
-	DateWithTimezone,
-	DateWithTimezoneString,
-} from '../runtime/date-with-timezone';
+
 import { isNullableFieldSchema } from '../fields/nullability';
 
 /**
@@ -169,23 +166,9 @@ type FieldToDrizzle<C extends FieldSchema> = C extends IdFieldSchema
 							: NotNull<SQLiteBooleanBuilderInitial<''>>
 						: C extends DateFieldSchema<infer TNullable>
 							? TNullable extends true
-								? SQLiteCustomColumnBuilder<{
-										name: '';
-										dataType: 'custom';
-										columnType: 'SQLiteCustomColumn';
-										data: DateWithTimezone;
-										driverParam: DateWithTimezoneString;
-										enumValues: undefined;
-									}>
+								? SQLiteTextBuilderInitial<'', [string, ...string[]], undefined>
 								: NotNull<
-										SQLiteCustomColumnBuilder<{
-											name: '';
-											dataType: 'custom';
-											columnType: 'SQLiteCustomColumn';
-											data: DateWithTimezone;
-											driverParam: DateWithTimezoneString;
-											enumValues: undefined;
-										}>
+										SQLiteTextBuilderInitial<'', [string, ...string[]], undefined>
 									>
 							: C extends SelectFieldSchema<infer TOptions, infer TNullable>
 								? TNullable extends true

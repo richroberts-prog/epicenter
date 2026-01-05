@@ -31,7 +31,7 @@ import type {
 	YtextFieldSchema,
 } from '../fields/types';
 import { isNullableFieldSchema } from '../fields/nullability';
-import { DATE_WITH_TIMEZONE_STRING_REGEX } from '../runtime/regex';
+import { ZONED_DATETIME_STRING_REGEX } from '../runtime/zoned-datetime';
 
 /**
  * Maps a FieldSchema to its corresponding YJS cell value arktype Type.
@@ -162,9 +162,9 @@ export function fieldSchemaToYjsArktype<C extends FieldSchema>(
 		case 'date':
 			baseType = type.string
 				.describe(
-					'ISO 8601 date with timezone (e.g., 2024-01-01T20:00:00.000Z|America/New_York)',
+					'RFC 9557 date-time with timezone (e.g., 2024-01-15T14:30:00-05:00[America/New_York])',
 				)
-				.matching(DATE_WITH_TIMEZONE_STRING_REGEX);
+				.matching(ZONED_DATETIME_STRING_REGEX);
 			break;
 		case 'select':
 			baseType = type.enumerated(...fieldSchema.enum);

@@ -16,7 +16,7 @@ import type {
  * Serializes a single cell value to its plain JavaScript equivalent.
  * - Y.Text → string
  * - Y.Array<T> → T[]
- * - DateWithTimezoneString → returned as-is (already in string format)
+ * - ZonedDateTimeString → returned as-is (already in string format)
  * - Other types → unchanged (primitives, null, undefined)
  *
  * @example
@@ -28,8 +28,8 @@ import type {
  * const yarray = Y.Array.from(['a', 'b', 'c']);
  * serializeCellValue(yarray); // ['a', 'b', 'c']
  *
- * const date = '2024-01-01T00:00:00.000Z|America/New_York'; // stored as string in YJS
- * serializeCellValue(date); // '2024-01-01T00:00:00.000Z|America/New_York'
+ * const date = '2024-01-01T19:00:00-05:00[America/New_York]'; // stored as string in YJS
+ * serializeCellValue(date); // '2024-01-01T19:00:00-05:00[America/New_York]'
  *
  * serializeCellValue(null); // null
  * serializeCellValue(42); // 42

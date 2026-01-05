@@ -1,7 +1,7 @@
 import { diffChars } from 'diff';
 import * as Y from 'yjs';
 import type { PartialSerializedRow, TableSchema } from '../../core/schema';
-import { isDateWithTimezoneString } from '../../core/schema';
+import { isZonedDateTimeString } from '../../core/schema';
 import type { YRow } from '../tables/table-helper';
 
 /**
@@ -279,7 +279,7 @@ export function updateYRowFromSerializedRow<TTableSchema extends TableSchema>({
 				updateYTextFromString(ytext, value);
 			} else if (
 				columnSchema?.['x-component'] === 'date' &&
-				isDateWithTimezoneString(value)
+				isZonedDateTimeString(value)
 			) {
 				if (existing !== value) {
 					yrow.set(fieldName, value);

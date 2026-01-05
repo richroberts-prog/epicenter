@@ -7,11 +7,21 @@
  * When native Temporal ships in browsers/runtimes, just remove the polyfill import.
  */
 
+import { regex } from 'arkregex';
 import { Temporal } from 'temporal-polyfill';
 import type { Brand } from 'wellcrafted/brand';
 
-// Re-export Temporal for direct usage
 export { Temporal };
+
+/**
+ * Regex pattern for RFC 9557 ZonedDateTime string validation.
+ * Used for JSON Schema `pattern` field. Actual validation uses Temporal.ZonedDateTime.from().
+ *
+ * Format: `YYYY-MM-DDTHH:mm:ss[.sss]±HH:mm[TimeZone]` or `YYYY-MM-DDTHH:mm:ss[.sss]Z[TimeZone]`
+ */
+export const ZONED_DATETIME_STRING_REGEX = regex(
+	'^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d+)?(?:Z|[+-]\\d{2}:\\d{2})\\[[A-Za-z][A-Za-z0-9_/+-]*\\]$',
+);
 
 /**
  * RFC 9557 ZonedDateTime string format from Temporal.ZonedDateTime.toString().

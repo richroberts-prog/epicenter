@@ -32,10 +32,7 @@
 
 import type * as Y from 'yjs';
 import type { YRow } from '../../tables/table-helper';
-import type {
-	DateWithTimezone,
-	DateWithTimezoneString,
-} from '../runtime/date-with-timezone';
+import type { ZonedDateTimeString } from '../runtime/zoned-datetime';
 import type {
 	StandardSchemaV1,
 	StandardSchemaWithJSONSchema,
@@ -105,15 +102,15 @@ export type BooleanFieldSchema<TNullable extends boolean = boolean> = {
 
 /**
  * Date column schema - timezone-aware dates.
- * Stored as DateWithTimezoneString format: `{iso}|{timezone}`.
- * Uses `pattern` for JSON Schema validation (not `format: 'date'` which implies RFC 3339).
+ * Stored as ZonedDateTimeString (RFC 9557): `2024-01-15T14:30:00-05:00[America/New_York]`.
+ * Uses `pattern` for JSON Schema validation.
  */
 export type DateFieldSchema<TNullable extends boolean = boolean> = {
 	'x-component': 'date';
 	type: TNullable extends true ? readonly ['string', 'null'] : 'string';
 	description: string;
 	pattern: string;
-	default?: DateWithTimezone;
+	default?: ZonedDateTimeString;
 };
 
 /**
@@ -257,7 +254,7 @@ type IsNullableType<T> = T extends readonly [unknown, 'null'] ? true : false;
  *
  * - YtextFieldSchema → Y.Text
  * - TagsFieldSchema → Y.Array
- * - DateFieldSchema → DateWithTimezoneString
+ * - DateFieldSchema → ZonedDateTimeString
  * - Other fields → primitive types
  *
  * Nullability is derived from the schema's `type` field.
@@ -287,8 +284,8 @@ export type CellValue<C extends FieldSchema = FieldSchema> =
 								: boolean
 							: C extends DateFieldSchema
 								? IsNullableType<C['type']> extends true
-									? DateWithTimezoneString | null
-									: DateWithTimezoneString
+									? ZonedDateTimeString | null
+									: ZonedDateTimeString
 								: C extends SelectFieldSchema<infer TOptions>
 									? IsNullableType<C['type']> extends true
 										? TOptions[number] | null
@@ -311,7 +308,7 @@ export type CellValue<C extends FieldSchema = FieldSchema> =
  * Converts Y.js types to plain values:
  * - Y.Text → string
  * - Y.Array → array
- * - DateWithTimezone → DateWithTimezoneString
+ * - ZonedDateTimeString → ZonedDateTimeString (already serialized)
  */
 export type SerializedCellValue<C extends FieldSchema = FieldSchema> =
 	CellValue<C> extends infer T
@@ -319,9 +316,7 @@ export type SerializedCellValue<C extends FieldSchema = FieldSchema> =
 			? string
 			: T extends Y.Array<infer U>
 				? U[]
-				: T extends DateWithTimezone
-					? DateWithTimezoneString
-					: T
+				: T
 		: never;
 
 // ============================================================================

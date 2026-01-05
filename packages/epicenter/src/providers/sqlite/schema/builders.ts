@@ -16,11 +16,12 @@ import {
 	real as drizzleReal,
 	text as drizzleText,
 } from 'drizzle-orm/sqlite-core';
-import type {
-	DateWithTimezoneString,
-	DateWithTimezone as DateWithTimezoneType,
+import {
+	type ZonedDateTimeString,
+	createZonedDateTimeString,
+	generateId,
+	Temporal,
 } from '../../../core/schema';
-import { DateWithTimezone, generateId } from '../../../core/schema';
 
 /**
  * Type helper that composes Drizzle column modifiers based on options
@@ -194,8 +195,8 @@ export function boolean<
 /**
  * Creates a date column with timezone support (stored as text, NOT NULL by default)
  *
- * Stores dates as DateWithTimezoneString in format "ISO_UTC|TIMEZONE"
- * (e.g., "2024-01-01T20:00:00.000Z|America/New_York")
+ * Stores dates as ZonedDateTimeString in RFC 9557 format
+ * (e.g., "2024-01-15T14:30:00-05:00[America/New_York]")
  *
  * YJS stores dates as strings, so this column works directly with the serialized format.
  * SQLite stores the same string format for maximum compatibility.
@@ -210,9 +211,10 @@ export function boolean<
 export function date<
 	TNullable extends boolean = false,
 	TDefault extends
+		| ZonedDateTimeString
 		| Date
-		| DateWithTimezone
-		| (() => Date | DateWithTimezone)
+		| Temporal.ZonedDateTime
+		| (() => ZonedDateTimeString | Date | Temporal.ZonedDateTime)
 		| undefined = undefined,
 >({
 	nullable = false as TNullable,
@@ -221,36 +223,31 @@ export function date<
 	nullable?: TNullable;
 	default?: TDefault;
 } = {}) {
-	/**
-	 * Use plain text column since YJS stores DateWithTimezoneString (already serialized)
-	 * No conversion needed - SQLite stores the same string format that YJS uses
-	 */
 	let column = drizzleText();
 
-	// NOT NULL by default
 	if (!nullable) column = column.notNull();
 
-	/**
-	 * Normalizes Date or DateWithTimezone to DateWithTimezoneString
-	 * This is only used for default values, since YJS already stores strings
-	 */
-	const normalizeToDateWithTimezoneString = (
-		value: Date | DateWithTimezoneType,
-	): DateWithTimezoneString => {
+	const normalizeToZonedDateTimeString = (
+		value: ZonedDateTimeString | Date | Temporal.ZonedDateTime,
+	): ZonedDateTimeString => {
+		if (typeof value === 'string') {
+			return value;
+		}
 		if (value instanceof Date) {
 			const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-			return DateWithTimezone({ date: value, timezone }).toJSON();
+			const instant = Temporal.Instant.fromEpochMilliseconds(value.getTime());
+			return createZonedDateTimeString(instant, timezone);
 		}
-		return value.toJSON();
+		return createZonedDateTimeString(value.toInstant(), value.timeZoneId);
 	};
 
 	if (defaultValue !== undefined) {
 		column =
 			typeof defaultValue === 'function'
 				? column.$defaultFn(() =>
-						normalizeToDateWithTimezoneString(defaultValue()),
+						normalizeToZonedDateTimeString(defaultValue()),
 					)
-				: column.default(normalizeToDateWithTimezoneString(defaultValue));
+				: column.default(normalizeToZonedDateTimeString(defaultValue));
 	}
 
 	return column as ApplyColumnModifiers<typeof column, TNullable, TDefault>;

@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'bun:test';
 import { createWorkspace } from '../static/create-workspace.js';
-import { filesTable } from './file-table.js';
 import { createFileSystemIndex } from './file-system-index.js';
+import { filesTable } from './file-table.js';
 import { ROOT_ID } from './types.js';
 
 function setup() {
@@ -9,7 +9,12 @@ function setup() {
 	return ws;
 }
 
-function makeRow(id: string, name: string, parentId: string | null = null, type: 'file' | 'folder' = 'file') {
+function makeRow(
+	id: string,
+	name: string,
+	parentId: string | null = null,
+	type: 'file' | 'folder' = 'file',
+) {
 	return {
 		id,
 		name,
@@ -56,7 +61,9 @@ describe('createFileSystemIndex', () => {
 		expect(index.pathToId.get('/docs')).toBe('d1');
 		expect(index.pathToId.get('/docs/api.md')).toBe('f1');
 		expect(index.pathToId.get('/docs/readme.md')).toBe('f2');
-		expect(index.childrenOf.get('d1')).toEqual(expect.arrayContaining(['f1', 'f2']));
+		expect(index.childrenOf.get('d1')).toEqual(
+			expect.arrayContaining(['f1', 'f2']),
+		);
 
 		index.destroy();
 	});
@@ -78,7 +85,10 @@ describe('createFileSystemIndex', () => {
 	test('trashed files are excluded', () => {
 		const ws = setup();
 		ws.tables.files.set(makeRow('f1', 'active.txt'));
-		ws.tables.files.set({ ...makeRow('f2', 'trashed.txt'), trashedAt: Date.now() });
+		ws.tables.files.set({
+			...makeRow('f2', 'trashed.txt'),
+			trashedAt: Date.now(),
+		});
 		const index = createFileSystemIndex(ws.tables.files);
 
 		expect(index.pathToId.get('/active.txt')).toBe('f1');
@@ -149,8 +159,16 @@ describe('createFileSystemIndex', () => {
 
 	test('CRDT duplicate names are disambiguated', () => {
 		const ws = setup();
-		ws.tables.files.set({ ...makeRow('a', 'foo.txt'), createdAt: 1000, updatedAt: 1000 });
-		ws.tables.files.set({ ...makeRow('b', 'foo.txt'), createdAt: 2000, updatedAt: 2000 });
+		ws.tables.files.set({
+			...makeRow('a', 'foo.txt'),
+			createdAt: 1000,
+			updatedAt: 1000,
+		});
+		ws.tables.files.set({
+			...makeRow('b', 'foo.txt'),
+			createdAt: 2000,
+			updatedAt: 2000,
+		});
 		const index = createFileSystemIndex(ws.tables.files);
 
 		// Earliest keeps clean name, later gets suffix

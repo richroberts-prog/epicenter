@@ -1,5 +1,5 @@
 import type { TableHelper } from '../static/types.js';
-import { ROOT_ID, type FileRow, type FileSystemIndex } from './types.js';
+import { type FileRow, type FileSystemIndex, ROOT_ID } from './types.js';
 import { disambiguateNames } from './validation.js';
 
 const MAX_DEPTH = 50;

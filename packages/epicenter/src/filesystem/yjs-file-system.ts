@@ -1,15 +1,27 @@
-import type { IFileSystem, FsStat, CpOptions, MkdirOptions, RmOptions, FileContent } from 'just-bash';
-import type { TableHelper } from '../static/types.js';
+import type {
+	CpOptions,
+	FileContent,
+	FsStat,
+	IFileSystem,
+	MkdirOptions,
+	RmOptions,
+} from 'just-bash';
 import { generateGuid } from '../dynamic/schema/fields/id.js';
-import type { ContentDocPool, FileRow, FileSystemIndex } from './types.js';
-import { ROOT_ID } from './types.js';
+import type { TableHelper } from '../static/types.js';
+import { getExtensionCategory } from './convert-on-switch.js';
 import {
 	parseFrontmatter,
 	updateYMapFromRecord,
 	updateYXmlFragmentFromString,
 } from './markdown-helpers.js';
-import { assertUniqueName, disambiguateNames, fsError, validateName } from './validation.js';
-import { getExtensionCategory } from './convert-on-switch.js';
+import type { ContentDocPool, FileRow, FileSystemIndex } from './types.js';
+import { ROOT_ID } from './types.js';
+import {
+	assertUniqueName,
+	disambiguateNames,
+	fsError,
+	validateName,
+} from './validation.js';
 
 type DirentEntry = {
 	name: string;
@@ -20,7 +32,9 @@ type DirentEntry = {
 
 function posixResolve(base: string, path: string): string {
 	// If path is absolute, use it directly
-	let resolved = path.startsWith('/') ? path : base.replace(/\/$/, '') + '/' + path;
+	let resolved = path.startsWith('/')
+		? path
+		: base.replace(/\/$/, '') + '/' + path;
 
 	// Normalize: remove double slashes, resolve . and ..
 	const parts = resolved.split('/');
@@ -113,7 +127,10 @@ export class YjsFileSystem implements IFileSystem {
 	// READS (content — may load content doc)
 	// ═══════════════════════════════════════════════════════════════════════
 
-	async readFile(path: string, _options?: { encoding?: string | null } | string): Promise<string> {
+	async readFile(
+		path: string,
+		_options?: { encoding?: string | null } | string,
+	): Promise<string> {
 		const resolved = posixResolve(this.cwd, path);
 		const id = this.resolveId(resolved);
 		const row = this.getRow(id, resolved);
@@ -138,9 +155,14 @@ export class YjsFileSystem implements IFileSystem {
 	// WRITES
 	// ═══════════════════════════════════════════════════════════════════════
 
-	async writeFile(path: string, data: FileContent, _options?: { encoding?: string } | string): Promise<void> {
+	async writeFile(
+		path: string,
+		data: FileContent,
+		_options?: { encoding?: string } | string,
+	): Promise<void> {
 		const resolved = posixResolve(this.cwd, path);
-		const content = typeof data === 'string' ? data : new TextDecoder().decode(data);
+		const content =
+			typeof data === 'string' ? data : new TextDecoder().decode(data);
 		let id = this.index.pathToId.get(resolved);
 
 		if (!id) {
@@ -186,9 +208,14 @@ export class YjsFileSystem implements IFileSystem {
 		this.index.plaintext.set(id, content);
 	}
 
-	async appendFile(path: string, data: FileContent, _options?: { encoding?: string } | string): Promise<void> {
+	async appendFile(
+		path: string,
+		data: FileContent,
+		_options?: { encoding?: string } | string,
+	): Promise<void> {
 		const resolved = posixResolve(this.cwd, path);
-		const content = typeof data === 'string' ? data : new TextDecoder().decode(data);
+		const content =
+			typeof data === 'string' ? data : new TextDecoder().decode(data);
 		const id = this.index.pathToId.get(resolved);
 		if (!id) return this.writeFile(resolved, data, _options);
 
@@ -215,7 +242,12 @@ export class YjsFileSystem implements IFileSystem {
 				if (await this.exists(currentPath)) continue;
 				validateName(part);
 				const { parentId } = this.parsePath(currentPath);
-				assertUniqueName(this.filesTable, this.index.childrenOf, parentId, part);
+				assertUniqueName(
+					this.filesTable,
+					this.index.childrenOf,
+					parentId,
+					part,
+				);
 				this.filesTable.set({
 					id: generateGuid(),
 					name: part,
@@ -280,7 +312,11 @@ export class YjsFileSystem implements IFileSystem {
 			await this.mkdir(resolvedDest, { recursive: true });
 			const children = await this.readdir(resolvedSrc);
 			for (const child of children) {
-				await this.cp(`${resolvedSrc}/${child}`, `${resolvedDest}/${child}`, options);
+				await this.cp(
+					`${resolvedSrc}/${child}`,
+					`${resolvedDest}/${child}`,
+					options,
+				);
 			}
 		} else {
 			const content = await this.readFile(resolvedSrc);
@@ -293,9 +329,16 @@ export class YjsFileSystem implements IFileSystem {
 		const resolvedDest = posixResolve(this.cwd, dest);
 		const id = this.resolveId(resolvedSrc);
 		const row = this.getRow(id, resolvedSrc);
-		const { parentId: newParentId, name: newName } = this.parsePath(resolvedDest);
+		const { parentId: newParentId, name: newName } =
+			this.parsePath(resolvedDest);
 		validateName(newName);
-		assertUniqueName(this.filesTable, this.index.childrenOf, newParentId, newName, id);
+		assertUniqueName(
+			this.filesTable,
+			this.index.childrenOf,
+			newParentId,
+			newName,
+			id,
+		);
 
 		// Detect extension category change and re-write content through new type
 		if (row.type === 'file') {

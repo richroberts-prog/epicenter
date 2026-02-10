@@ -1,11 +1,11 @@
 import * as Y from 'yjs';
-import type { ContentDocPool, DocumentHandle } from './types.js';
+import { healContentType } from './convert-on-switch.js';
 import {
 	serializeMarkdownWithFrontmatter,
 	serializeXmlFragmentToMarkdown,
 	yMapToRecord,
 } from './markdown-helpers.js';
-import { healContentType } from './convert-on-switch.js';
+import type { ContentDocPool, DocumentHandle } from './types.js';
 
 type PoolEntry = {
 	handle: DocumentHandle;
@@ -18,7 +18,11 @@ type PoolEntry = {
  * .md files use Y.XmlFragment('richtext') + Y.Map('frontmatter').
  * All other files use Y.Text('text').
  */
-export function openDocument(fileId: string, fileName: string, ydoc: Y.Doc): DocumentHandle {
+export function openDocument(
+	fileId: string,
+	fileName: string,
+	ydoc: Y.Doc,
+): DocumentHandle {
 	if (fileName.endsWith('.md')) {
 		return {
 			type: 'richtext',

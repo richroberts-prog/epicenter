@@ -37,7 +37,9 @@ export function convertContentType(
 	} else {
 		// richtext → text
 		const frontmatter = yMapToRecord(ydoc.getMap('frontmatter'));
-		const body = serializeXmlFragmentToMarkdown(ydoc.getXmlFragment('richtext'));
+		const body = serializeXmlFragmentToMarkdown(
+			ydoc.getXmlFragment('richtext'),
+		);
 		const combined = serializeMarkdownWithFrontmatter(frontmatter, body);
 		const ytext = ydoc.getText('text');
 		ydoc.transact(() => {

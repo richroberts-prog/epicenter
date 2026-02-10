@@ -14,7 +14,12 @@ function setup() {
 	return ws;
 }
 
-function makeRow(id: string, name: string, parentId: string | null = null, createdAt = Date.now()) {
+function makeRow(
+	id: string,
+	name: string,
+	parentId: string | null = null,
+	createdAt = Date.now(),
+) {
 	return {
 		id,
 		name,
@@ -93,7 +98,10 @@ describe('assertUniqueName', () => {
 
 	test('ignores trashed files', () => {
 		const ws = setup();
-		ws.tables.files.set({ ...makeRow('a', 'hello.txt'), trashedAt: Date.now() });
+		ws.tables.files.set({
+			...makeRow('a', 'hello.txt'),
+			trashedAt: Date.now(),
+		});
 		const childrenOf = new Map([[ROOT_ID, ['a']]]);
 
 		expect(() =>

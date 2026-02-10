@@ -1,19 +1,19 @@
 import { describe, expect, test } from 'bun:test';
-import * as Y from 'yjs';
 import { Bash } from 'just-bash';
+import * as Y from 'yjs';
 import { createWorkspace } from '../static/create-workspace.js';
-import { filesTable } from './file-table.js';
-import { createFileSystemIndex } from './file-system-index.js';
 import { createContentDocPool } from './content-doc-pool.js';
-import { YjsFileSystem } from './yjs-file-system.js';
+import { createFileSystemIndex } from './file-system-index.js';
+import { filesTable } from './file-table.js';
 import {
 	parseFrontmatter,
 	serializeMarkdownWithFrontmatter,
+	serializeXmlFragmentToMarkdown,
 	updateYMapFromRecord,
 	updateYXmlFragmentFromString,
 	yMapToRecord,
-	serializeXmlFragmentToMarkdown,
 } from './markdown-helpers.js';
+import { YjsFileSystem } from './yjs-file-system.js';
 
 describe('parseFrontmatter', () => {
 	test('no front matter', () => {
@@ -52,7 +52,10 @@ describe('serializeMarkdownWithFrontmatter', () => {
 	});
 
 	test('with frontmatter', () => {
-		const result = serializeMarkdownWithFrontmatter({ title: 'Test' }, '# Hello');
+		const result = serializeMarkdownWithFrontmatter(
+			{ title: 'Test' },
+			'# Hello',
+		);
 		expect(result).toBe('---\ntitle: Test\n---\n# Hello');
 	});
 });

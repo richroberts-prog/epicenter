@@ -5,11 +5,11 @@ export const filesTable = defineTable(
 	type({
 		id: 'string',
 		name: 'string',
-		'parentId': 'string | null',
+		parentId: 'string | null',
 		type: "'file' | 'folder'",
 		size: 'number',
 		createdAt: 'number',
 		updatedAt: 'number',
-		'trashedAt': 'number | null',
+		trashedAt: 'number | null',
 	}),
 );

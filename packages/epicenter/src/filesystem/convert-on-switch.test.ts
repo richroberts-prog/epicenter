@@ -1,16 +1,19 @@
 import { describe, expect, test } from 'bun:test';
 import * as Y from 'yjs';
 import { createWorkspace } from '../static/create-workspace.js';
-import { filesTable } from './file-table.js';
-import { createFileSystemIndex } from './file-system-index.js';
 import { createContentDocPool } from './content-doc-pool.js';
-import { YjsFileSystem } from './yjs-file-system.js';
 import {
-	getExtensionCategory,
 	convertContentType,
+	getExtensionCategory,
 	healContentType,
 } from './convert-on-switch.js';
-import { updateYXmlFragmentFromString, updateYMapFromRecord } from './markdown-helpers.js';
+import { createFileSystemIndex } from './file-system-index.js';
+import { filesTable } from './file-table.js';
+import {
+	updateYMapFromRecord,
+	updateYXmlFragmentFromString,
+} from './markdown-helpers.js';
+import { YjsFileSystem } from './yjs-file-system.js';
 
 function setup() {
 	const ws = createWorkspace({ id: 'test', tables: { files: filesTable } });
@@ -36,7 +39,9 @@ describe('getExtensionCategory', () => {
 
 	test('same-category renames', () => {
 		// .ts → .js stays text
-		expect(getExtensionCategory('index.ts')).toBe(getExtensionCategory('index.js'));
+		expect(getExtensionCategory('index.ts')).toBe(
+			getExtensionCategory('index.js'),
+		);
 	});
 });
 
@@ -72,7 +77,10 @@ describe('convertContentType', () => {
 	test('richtext → text', () => {
 		const ydoc = new Y.Doc();
 		updateYMapFromRecord(ydoc.getMap('frontmatter'), { title: 'Test' });
-		updateYXmlFragmentFromString(ydoc.getXmlFragment('richtext'), '# Hello World\n');
+		updateYXmlFragmentFromString(
+			ydoc.getXmlFragment('richtext'),
+			'# Hello World\n',
+		);
 
 		convertContentType(ydoc, 'richtext', 'text');
 
@@ -84,7 +92,10 @@ describe('convertContentType', () => {
 
 	test('richtext → text without frontmatter', () => {
 		const ydoc = new Y.Doc();
-		updateYXmlFragmentFromString(ydoc.getXmlFragment('richtext'), '# Plain heading\n');
+		updateYXmlFragmentFromString(
+			ydoc.getXmlFragment('richtext'),
+			'# Plain heading\n',
+		);
 
 		convertContentType(ydoc, 'richtext', 'text');
 
@@ -117,7 +128,10 @@ describe('healContentType', () => {
 
 	test('heals .ts file with content in richtext key', () => {
 		const ydoc = new Y.Doc();
-		updateYXmlFragmentFromString(ydoc.getXmlFragment('richtext'), 'export const x = 42;\n');
+		updateYXmlFragmentFromString(
+			ydoc.getXmlFragment('richtext'),
+			'export const x = 42;\n',
+		);
 
 		healContentType(ydoc, 'index.ts');
 

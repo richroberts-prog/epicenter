@@ -1,9 +1,9 @@
 import { describe, expect, test } from 'bun:test';
 import { Bash } from 'just-bash';
 import { createWorkspace } from '../static/create-workspace.js';
-import { filesTable } from './file-table.js';
-import { createFileSystemIndex } from './file-system-index.js';
 import { createContentDocPool } from './content-doc-pool.js';
+import { createFileSystemIndex } from './file-system-index.js';
+import { filesTable } from './file-table.js';
 import { YjsFileSystem } from './yjs-file-system.js';
 
 function setup() {
@@ -263,12 +263,16 @@ describe('YjsFileSystem', () => {
 	describe('symlink / link / readlink', () => {
 		test('symlink throws ENOSYS', async () => {
 			const { fs } = setup();
-			await expect((fs as any).symlink('/target', '/link')).rejects.toThrow('ENOSYS');
+			await expect((fs as any).symlink('/target', '/link')).rejects.toThrow(
+				'ENOSYS',
+			);
 		});
 
 		test('link throws ENOSYS', async () => {
 			const { fs } = setup();
-			await expect((fs as any).link('/existing', '/new')).rejects.toThrow('ENOSYS');
+			await expect((fs as any).link('/existing', '/new')).rejects.toThrow(
+				'ENOSYS',
+			);
 		});
 
 		test('readlink throws ENOSYS', async () => {

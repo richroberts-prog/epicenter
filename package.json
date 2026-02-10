@@ -84,6 +84,10 @@
 		"jsrepo": "^3.0.8"
 	},
 	"dependencies": {
+		"@tauri-apps/api": "2.9.1",
 		"arktype": "^2.1.29"
+	},
+	"overrides": {
+		"@tauri-apps/api": "2.9.1"
 	}
 }
